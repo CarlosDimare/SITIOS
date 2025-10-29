@@ -153,6 +153,7 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            overflow-x: hidden;
         }
         .social-half h2 {
             font-size: 1.5rem;
@@ -162,6 +163,16 @@
         }
         .fb-page, .youtube-embed {
             width: 100%;
+        }
+        .fb-wrapper {
+            width: 100%;
+            overflow: hidden;
+        }
+        .fb-wrapper iframe {
+            width: 100% !important;
+            max-width: 100%;
+            height: auto;
+            min-height: 750px;
         }
         .youtube-embed iframe {
             width: 100%;
@@ -294,6 +305,7 @@
             nav a { display: block; padding: 1rem; font-size: 1rem; }
             .hero { padding: 2rem 1rem; }
             .social-half { height: auto; padding: 1rem; max-width: 100%; box-sizing: border-box; }
+            .fb-wrapper iframe { min-height: 600px; }
             .card { padding: 1rem; }
             .section-title { font-size: 1.5rem; }
             .afiliate-btn { padding: 1.8rem 2.4rem; right: 1rem; bottom: 1rem; }
@@ -341,7 +353,9 @@
 <!-- ACTUALIDAD -->
 <section class="hero" id="actualidad">
     <div class="social-half">
-        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fsutna.nacional&tabs=timeline&width=500&height=750&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId" width="500" height="750" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+        <div class="fb-wrapper">
+            <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fsutna.nacional&tabs=timeline&width=500&height=750&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId" width="500" height="750" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+        </div>
     </div>
 
     <div class="social-half">
