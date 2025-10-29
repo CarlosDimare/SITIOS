@@ -32,6 +32,19 @@
                     nav.classList.remove('active');
                 });
             });
+
+            // Resize Facebook iframe to fit container
+            function resizeFacebookIframe() {
+                const iframe = document.querySelector('.social-half iframe');
+                if (iframe) {
+                    const container = iframe.parentElement;
+                    const width = container.offsetWidth;
+                    const src = iframe.src.replace(/width=\d+/, 'width=' + width);
+                    iframe.src = src;
+                }
+            }
+            resizeFacebookIframe();
+            window.addEventListener('resize', resizeFacebookIframe);
         });
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -299,6 +312,7 @@
             nav a { display: block; padding: 1rem; font-size: 1rem; }
             .hero { padding: 2rem 1rem; }
             .social-half { height: auto; padding: 1rem; max-width: 100%; box-sizing: border-box; }
+            .social-half iframe { width: 100% !important; height: 1200px; }
             .card { padding: 1rem; }
             .section-title { font-size: 1.5rem; }
             .afiliate-btn { padding: 1.8rem 2.4rem; right: 1rem; bottom: 1rem; }
