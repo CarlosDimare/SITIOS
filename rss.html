@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>NewsHub - Lector de Noticias Inteligente</title>
+
+    <!-- IMPORTANTE (dev vs prod):
+         Este CDN de Tailwind es práctico para un solo HTML, pero no se recomienda en producción.
+         Para producción, compila Tailwind y sirve un CSS estático:
+         https://tailwindcss.com/docs/installation -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0a0a0a',
+                            card: '#1a1a1a',
+                            border: '#2a2a2a',
+                            text: '#ffffff',
+                            muted: '#9ca3af'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .news-item { transition: all 0.3s ease; }
+        .news-item:hover { transform: translateY(-2px); }
+        .source-tab { transition: all 0.2s ease; }
+        .source-tab.active { border-bottom: 3px solid #3b82f6; }
+        .chat-message { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .tag-pill { transition: all 0.2s ease; }
+        .tag-pill:hover { transform: scale(1.05); }
+        .notification { animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px; height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .dark .loader { border: 3px solid #2a2a2a; border-top: 3px solid #3b82f6; }
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+        .dark-mode-transition * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        .search-result { transition: all 0.2s ease; }
+        .search-result:hover {
+            background-color: rgba(59, 130, 246, 0.05);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .dark .search-result:hover { background-color: rgba(59, 130, 246, 0.1); }
+        .line-clamp-2 {
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .debug-info {
+            background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; padding: 8px; margin: 4px 0;
+            font-size: 12px; color: #721c24;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-dark-bg dark:text-dark-text dark-mode-transition">
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-40 dark:bg-dark-card dark:border-b dark:border-dark-border">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-newspaper text-blue-600 dark:text-blue-400 text-2xl"></i>
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-dark-text">NewsHub</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="addSourceBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-search mr-2"></i>Buscar Fuente
+                    </button>
+                    <button id="refreshAllBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-sync-alt mr-2"></i>Actualizar Todo
+                    </button>
+                    <button id="darkModeToggle" class="p-2 rounded-lg bg-gray-200 dark:bg-dark-card dark:border dark:border-dark-border hover:bg-gray-300 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:inline"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Sidebar -->
+            <aside class="lg:w-1/4">
+                <div class="bg-white rounded-lg shadow-md p-4 mb-4 dark:bg-dark-card dark:border dark:border-dark-border">
+                    <h2 class="text-lg font-semibold mb-3 flex items-center dark:text-dark-text">
+                        <i class="fas fa-list mr-2 text-blue-600 dark:text-blue-400"></i>
+                        Fuentes de Noticias
+                    </h2>
+                    <div id="sourcesList" class="space-y-2"></div>
+                    <div id="noSources" class="text-center py-8">
+                        <i class="fas fa-newspaper text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+                        <p class="text-gray-500 dark:text-gray-400">No hay fuentes agregadas</p>
+                        <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">Haz clic en "Buscar Fuente" para agregar tus primeros sitios</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-4 mb-4 dark:bg-dark-card dark:border dark:border-dark-border">
+                    <h2 class="text-lg font-semibold mb-3 flex items-center dark:text-dark-text">
+                        <i class="fas fa-tags mr-2 text-blue-600 dark:text-blue-400"></i>
+                        Palabras Clave
+                    </h2>
+                    <div id="tagsContainer" class="flex flex-wrap gap-2 mb-3"></div>
+                    <div class="flex items-center space-x-2">
+                        <input id="newTagInput" type="text" placeholder="Nueva palabra clave"
+                               class="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text"/>
+                        <button id="addTagBtn" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-4 dark:bg-dark-card dark:border dark:border-dark-border">
+                    <h2 class="text-lg font-semibold mb-3 flex items-center dark:text-dark-text">
+                        <i class="fas fa-filter mr-2 text-blue-600 dark:text-blue-400"></i>
+                        Filtros
+                    </h2>
+                    <div class="space-y-2">
+                        <button id="filterAllBtn" class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition text-left dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text dark:hover:bg-gray-700">
+                            <i class="fas fa-globe mr-2"></i>Todas las noticias
+                        </button>
+                        <button id="filterUnreadBtn" class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition text-left dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text dark:hover:bg-gray-700">
+                            <i class="fas fa-envelope mr-2"></i>No leídas
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="lg:w-3/4">
+                <div class="bg-white rounded-lg shadow-md p-4 mb-4 dark:bg-dark-card dark:border dark:border-dark-border">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold flex items-center dark:text-dark-text">
+                            <i class="fas fa-newspaper mr-2 text-blue-600 dark:text-blue-400"></i>
+                            <span id="currentViewTitle">Todas las Noticias</span>
+                        </h2>
+                        <div class="flex items-center space-x-2">
+                            <select id="sortBySelect" class="px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text">
+                                <option value="date">Más Recientes</option>
+                                <option value="source">Por Fuente</option>
+                                <option value="title">Alfabético</option>
+                            </select>
+                            <div class="flex items-center space-x-1">
+                                <button id="viewGridBtn" class="p-2 bg-gray-200 rounded hover:bg-gray-300 transition dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text dark:hover:bg-gray-700">
+                                    <i class="fas fa-th"></i>
+                                </button>
+                                <button id="viewListBtn" class="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sourceTabs" class="flex space-x-2 mb-4 overflow-x-auto pb-2"></div>
+
+                    <div id="newsContainer" class="space-y-4"></div>
+
+                    <div id="loadingIndicator" class="hidden flex justify-center items-center py-8">
+                        <div class="loader"></div>
+                    </div>
+
+                    <div id="emptyState" class="text-center py-12">
+                        <i class="fas fa-newspaper text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-500 dark:text-gray-400 mb-2">No hay noticias para mostrar</h3>
+                        <p class="text-gray-400 dark:text-gray-500">Agrega fuentes de noticias para comenzar</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div id="searchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col dark:bg-dark-card dark:border dark:border-dark-border">
+            <div class="p-4 border-b flex items-center justify-between dark:border-dark-border">
+                <h2 class="text-xl font-semibold dark:text-dark-text">Buscar Fuente de Noticias</h2>
+                <button id="searchModalClose" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div class="relative mb-4">
+                    <input id="searchInput" type="text" placeholder="Ej: Clarín, La Nación, Infobae, Página 12..."
+                           class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text"/>
+                    <button id="searchBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div id="searchResults" class="space-y-2"></div>
+                <div id="searchLoading" class="hidden flex justify-center items-center py-8">
+                    <div class="loader"></div>
+                </div>
+                <div id="searchEmpty" class="hidden text-center py-8">
+                    <i class="fas fa-search text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+                    <p class="text-gray-500 dark:text-gray-400">Ingresa un término de búsqueda para encontrar fuentes de noticias</p>
+                </div>
+                <div id="debugInfo" class="hidden debug-info">
+                    <h3 class="text-lg font-semibold text-red-600 mb-2">Modo Depuración</h3>
+                    <p class="text-sm text-gray-700">Información de depuración para solucionar problemas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot -->
+    <div id="chatbotContainer" class="fixed bottom-4 right-4 z-50">
+        <button id="chatbotToggle" class="bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition">
+            <i class="fas fa-comments text-xl"></i>
+        </button>
+        <div id="chatbotWindow" class="hidden bg-white rounded-lg shadow-xl w-80 h-96 flex flex-col dark:bg-dark-card dark:border dark:border-dark-border">
+            <div class="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between">
+                <h3 class="font-semibold">Asistente de Noticias IA</h3>
+                <button id="chatbotClose" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+            <div class="p-3 border-t dark:border-dark-border">
+                <div class="flex space-x-2">
+                    <input id="chatInput" type="text" placeholder="Escribe tu pregunta..."
+                           class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text"/>
+                    <button id="chatSendBtn" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
+
+    <!-- News Detail Modal -->
+    <div id="newsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col dark:bg-dark-card dark:border dark:border-dark-border">
+            <div class="p-4 border-b flex items-center justify-between dark:border-dark-border">
+                <h2 id="modalTitle" class="text-xl font-semibold dark:text-dark-text"></h2>
+                <button id="modalClose" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <div id="modalContent" class="prose max-w-none dark:prose-invert"></div>
+            </div>
+            <div class="p-4 border-t flex justify-between dark:border-dark-border">
+                <div id="modalTags" class="flex flex-wrap gap-2"></div>
+                <div class="flex space-x-2">
+                    <button id="modalMarkRead" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text dark:hover:bg-gray-700">
+                        <i class="fas fa-check mr-1"></i>Marcar como leído
+                    </button>
+                    <button id="modalOpenOriginal" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                        <i class="fas fa-external-link-alt mr-1"></i>Abrir Original
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================
+        // Configuración opcional de proxy (recomendado en producción para búsqueda web/scraping)
+        // Monta un Cloudflare Worker con el código del proxy y pega la URL base aquí:
+        // const PROXY_BASE = 'https://tu-worker.workers.dev';
+        const PROXY_BASE = '';
+        // =========================
+
+        // Utils: debounce + URL helpers
+        function debounce(fn, delay = 350) {
+            let t;
+            return (...args) => {
+                clearTimeout(t);
+                t = setTimeout(() => fn(...args), delay);
+            };
+        }
+        function isLikelyUrlOrDomain(str) {
+            return /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/.*)?$/.test(str);
+        }
+        function toCandidateBaseUrl(str) {
+            try {
+                if (!/^https?:\/\//i.test(str)) str = 'https://' + str;
+                const u = new URL(str);
+                return u.origin;
+            } catch {
+                return null;
+            }
+        }
+
+        // App State
+        const app = {
+            sources: [],
+            tags: [],
+            news: [],
+            activeFilters: { source: null, tags: [], unread: false },
+            viewMode: 'list',
+            sortBy: 'date',
+            chatHistory: [],
+            currentNewsDetail: null,
+            darkMode: false,
+            debugMode: false
+        };
+
+        // Database (10 fuentes argentinas)
+        const newsSourcesDatabase = [
+            { name: 'Clarín', url: 'https://www.clarin.com', keywords: ['clarin', 'argentina', 'noticias'] },
+            { name: 'La Nación', url: 'https://www.lanacion.com.ar', keywords: ['nacion', 'argentina', 'noticias'] },
+            { name: 'Infobae', url: 'https://www.infobae.com', keywords: ['infobae', 'argentina', 'noticias'] },
+            { name: 'Página 12', url: 'https://www.pagina12.com.ar', keywords: ['pagina', '12', 'argentina'] },
+            { name: 'Perfil', url: 'https://www.perfil.com', keywords: ['perfil', 'argentina', 'noticias'] },
+            { name: 'Ámbito Financiero', url: 'https://www.ambito.com', keywords: ['ambito', 'financiero', 'argentina'] },
+            { name: 'Telam', url: 'https://www.telam.com.ar', keywords: ['telam', 'argentina', 'noticias'] },
+            { name: 'El Cronista', url: 'https://www.cronista.com', keywords: ['cronista', 'argentina', 'noticias'] },
+            { name: 'La Voz del Interior', url: 'https://www.lavoz.com.ar', keywords: ['voz', 'interior', 'argentina'] },
+            { name: 'Buenos Aires Herald', url: 'https://www.buenosairesherald.com', keywords: ['herald', 'buenos', 'aires'] }
+        ];
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            renderSourcesList();
+            renderTags();
+            renderNews();
+            initializeEventListeners();
+            initializeChatbot();
+            initializeDarkMode();
+
+            if (window.location.hash === '#debug') {
+                app.debugMode = true;
+                showNotification('Modo de depuración activado', 'info');
+            }
+
+            if (app.sources.length === 0) {
+                showNotification('¡Bienvenido a NewsHub! Haz clic en "Buscar Fuente" para agregar tus primeros sitios de noticias.', 'info');
+            }
+
+            if (location.protocol === 'file:') {
+                showNotification('Estás abriendo el archivo con file://. Usa un servidor local (ej. npx http-server) para evitar problemas de CORS.', 'warning');
+            }
+
+            if (!PROXY_BASE) {
+                console.log('Sugerencia: configura PROXY_BASE para búsquedas web y scraping opcional sin CORS.');
+            }
+        });
+
+        // Dark Mode
+        function initializeDarkMode() {
+            app.darkMode = localStorage.getItem('newsHubDarkMode') === 'true';
+            if (app.darkMode) document.documentElement.classList.add('dark');
+            updateDarkModeToggle();
+        }
+        function toggleDarkMode() {
+            app.darkMode = !app.darkMode;
+            document.documentElement.classList.toggle('dark', app.darkMode);
+            localStorage.setItem('newsHubDarkMode', app.darkMode);
+            updateDarkModeToggle();
+        }
+        function updateDarkModeToggle() {
+            const toggleBtn = document.getElementById('darkModeToggle');
+            toggleBtn.innerHTML = app.darkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        }
+
+        // Local Storage
+        function saveToLocalStorage() {
+            localStorage.setItem('newsHubState', JSON.stringify({
+                sources: app.sources,
+                tags: app.tags,
+                news: app.news,
+                chatHistory: app.chatHistory
+            }));
+        }
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('newsHubState');
+            if (!saved) return;
+            try {
+                const s = JSON.parse(saved);
+                app.sources = s.sources || [];
+                app.tags = s.tags || [];
+                app.news = s.news || [];
+                app.chatHistory = s.chatHistory || [];
+            } catch (e) { console.error('Error parsing saved state:', e); }
+        }
+
+        // Event Listeners
+        function initializeEventListeners() {
+            document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+            document.getElementById('addSourceBtn').addEventListener('click', openSearchModal);
+            document.getElementById('searchModalClose').addEventListener('click', closeSearchModal);
+
+            // Buscador: click, Enter y escritura con debounce
+            const performSearchDebounced = debounce(performSearch, 300);
+            document.getElementById('searchBtn').addEventListener('click', performSearch);
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
+            document.getElementById('searchInput').addEventListener('input', performSearchDebounced);
+
+            document.getElementById('refreshAllBtn').addEventListener('click', refreshAllSources);
+            document.getElementById('addTagBtn').addEventListener('click', addTag);
+            document.getElementById('newTagInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTag();
+            });
+            document.getElementById('filterAllBtn').addEventListener('click', () => {
+                app.activeFilters.source = null;
+                app.activeFilters.tags = [];
+                app.activeFilters.unread = false;
+                renderNews();
+            });
+            document.getElementById('filterUnreadBtn').addEventListener('click', () => {
+                app.activeFilters.unread = !app.activeFilters.unread;
+                renderNews();
+            });
+            document.getElementById('sortBySelect').addEventListener('change', (e) => {
+                app.sortBy = e.target.value;
+                renderNews();
+            });
+            document.getElementById('viewGridBtn').addEventListener('click', () => {
+                app.viewMode = 'grid';
+                updateViewModeButtons();
+                renderNews();
+            });
+            document.getElementById('viewListBtn').addEventListener('click', () => {
+                app.viewMode = 'list';
+                updateViewModeButtons();
+                renderNews();
+            });
+            document.getElementById('modalClose').addEventListener('click', closeModal);
+            document.getElementById('modalMarkRead').addEventListener('click', () => {
+                if (app.currentNewsDetail) {
+                    markAsRead(app.currentNewsDetail.id);
+                    closeModal();
+                    renderNews();
+                }
+            });
+            document.getElementById('modalOpenOriginal').addEventListener('click', () => {
+                if (app.currentNewsDetail) window.open(app.currentNewsDetail.link, '_blank');
+            });
+        }
+
+        function updateViewModeButtons() {
+            const gridBtn = document.getElementById('viewGridBtn');
+            const listBtn = document.getElementById('viewListBtn');
+            if (app.viewMode === 'grid') {
+                gridBtn.classList.add('bg-blue-600', 'text-white');
+                gridBtn.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-dark-card', 'dark:border-dark-border', 'dark:text-dark-text');
+                listBtn.classList.remove('bg-blue-600', 'text-white');
+                listBtn.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-dark-card', 'dark:border-dark-border', 'dark:text-dark-text');
+            } else {
+                listBtn.classList.add('bg-blue-600', 'text-white');
+                listBtn.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-dark-card', 'dark:border-dark-border', 'dark:text-dark-text');
+                gridBtn.classList.remove('bg-blue-600', 'text-white');
+                gridBtn.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-dark-card', 'dark:border-dark-border', 'dark:text-dark-text');
+            }
+        }
+
+        // Search Modal
+        function openSearchModal() {
+            document.getElementById('searchModal').classList.remove('hidden');
+            document.getElementById('searchInput').focus();
+            // Mostrar estado vacío
+            document.getElementById('searchEmpty').classList.remove('hidden');
+        }
+        function closeSearchModal() {
+            document.getElementById('searchModal').classList.add('hidden');
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('searchEmpty').classList.add('hidden');
+            document.getElementById('searchLoading').classList.add('hidden');
+        }
+
+        // Buscador mejorado (local + manual por URL + opcional web vía proxy)
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultsContainer = document.getElementById('searchResults');
+
+            resultsContainer.innerHTML = '';
+            document.getElementById('searchEmpty').classList.add('hidden');
+
+            if (!query) {
+                document.getElementById('searchEmpty').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('searchLoading').classList.remove('hidden');
+
+            try {
+                if (app.debugMode) {
+                    const dbg = document.getElementById('debugInfo');
+                    dbg.classList.remove('hidden');
+                    dbg.innerHTML = `
+                        <h3 class="text-lg font-semibold text-red-600 mb-2">Depuración de Búsqueda</h3>
+                        <p class="text-sm text-gray-700 mb-1">Término: "${query}"</p>
+                        <p class="text-sm text-gray-700">Búsqueda local + sugerencia por URL +${PROXY_BASE ? ' web via proxy' : ' sin web (proxy no configurado)'}.</p>
+                    `;
+                }
+
+                // 1) Local fuzzy
+                const databaseResults = searchInDatabase(query);
+
+                // 2) Si parece URL o dominio, sugerir "Agregar por URL"
+                const urlCandidate = isLikelyUrlOrDomain(query) ? toCandidateBaseUrl(query) : null;
+                const manualResult = urlCandidate ? [{
+                    title: urlCandidate.replace(/^https?:\/\//, ''),
+                    url: urlCandidate,
+                    description: 'Agregar por URL (descubrir RSS automáticamente)',
+                    type: 'manual'
+                }] : [];
+
+                // 3) Búsqueda web opcional (requiere proxy propio)
+                const webResults = PROXY_BASE ? await searchWebViaProxy(query) : [];
+
+                const allResults = [...databaseResults, ...manualResult, ...webResults];
+
+                // Dedupe por URL y título
+                const uniqueResults = [];
+                const seen = new Set();
+                for (const r of allResults) {
+                    if (!r || !r.url || !r.title) continue;
+                    const key = r.url.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') + '|' + r.title.toLowerCase().trim();
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    uniqueResults.push(r);
+                }
+
+                // Orden: database primero, luego manual, luego web. Afinado por coincidencia en título.
+                uniqueResults.sort((a, b) => {
+                    const typeOrder = (t) => t === 'database' ? 0 : (t === 'manual' ? 1 : 2);
+                    const ta = typeOrder(a.type || 'web');
+                    const tb = typeOrder(b.type || 'web');
+                    if (ta !== tb) return ta - tb;
+
+                    const q = query.toLowerCase();
+                    const an = a.title.toLowerCase();
+                    const bn = b.title.toLowerCase();
+                    if (an === q && bn !== q) return -1;
+                    if (bn === q && an !== q) return 1;
+                    const ai = an.includes(q);
+                    const bi = bn.includes(q);
+                    if (ai && !bi) return -1;
+                    if (!ai && bi) return 1;
+                    return 0;
+                });
+
+                displaySearchResults(uniqueResults.slice(0, 10));
+            } catch (error) {
+                console.error('Search error:', error);
+                showNotification('Error en la búsqueda. Intenta con otro término.', 'error');
+                displaySearchResults([]);
+            } finally {
+                document.getElementById('searchLoading').classList.add('hidden');
+            }
+        }
+
+        function searchInDatabase(query) {
+            const q = query.toLowerCase().trim();
+            const results = [];
+            newsSourcesDatabase.forEach(source => {
+                let score = 0;
+                const name = source.name.toLowerCase();
+                const kws = (source.keywords || []).map(k => k.toLowerCase());
+
+                if (name === q) score += 1000;
+                if (name.startsWith(q)) score += 500;
+                if (name.includes(q)) score += 300;
+                if (kws.includes(q)) score += 250;
+                if (kws.some(k => k.startsWith(q))) score += 180;
+                if (kws.some(k => k.includes(q))) score += 120;
+
+                const qWords = q.split(/\s+/).filter(Boolean);
+                const matches = qWords.filter(w => name.includes(w) || kws.some(k => k.includes(w))).length;
+                score += matches * 60;
+
+                if (score > 0) {
+                    results.push({
+                        title: source.name,
+                        url: source.url,
+                        description: `Fuente verificada - ${source.name}`,
+                        type: 'database',
+                        score
+                    });
+                }
+            });
+
+            results.sort((a, b) => b.score - a.score);
+            return results.slice(0, 10);
+        }
+
+        async function searchWebViaProxy(query) {
+            try {
+                const resp = await fetch(`${PROXY_BASE}/duck?q=${encodeURIComponent(query)}&limit=8`);
+                if (!resp.ok) return [];
+                const data = await resp.json();
+                return Array.isArray(data.results) ? data.results : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = '';
+
+            if (results.length === 0) {
+                document.getElementById('searchEmpty').classList.remove('hidden');
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-search text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+                        <p class="text-gray-500 dark:text-gray-400">No se encontraron resultados para "${document.getElementById('searchInput').value}"</p>
+                        <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">Intenta con términos como "Clarín", "La Nación", "Infobae" o pega un dominio (ej: sitio.com)</p>
+                        <button onclick="document.getElementById('searchInput').value=''; document.getElementById('searchInput').focus();" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                            Nueva búsqueda
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const databaseResults = results.filter(r => r.type === 'database');
+            const others = results.filter(r => r.type !== 'database');
+
+            if (databaseResults.length > 0) {
+                const header = document.createElement('div');
+                header.className = 'mb-3 px-2';
+                header.innerHTML = `
+                    <h3 class="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Fuentes Verificadas (${databaseResults.length})
+                    </h3>
+                `;
+                container.appendChild(header);
+
+                databaseResults.forEach(r => container.appendChild(createSearchResultElement(r, true)));
+            }
+
+            if (others.length > 0) {
+                const header = document.createElement('div');
+                header.className = 'mb-3 px-2 mt-6';
+                header.innerHTML = `
+                    <h3 class="text-sm font-semibold text-blue-600 dark:text-blue-400 flex items-center">
+                        <i class="fas fa-globe mr-2"></i>
+                        Otras coincidencias (${others.length})
+                    </h3>
+                `;
+                container.appendChild(header);
+
+                others.forEach(r => container.appendChild(createSearchResultElement(r, false)));
+            }
+        }
+
+        function createSearchResultElement(result, isVerified) {
+            const el = document.createElement('div');
+            el.className = 'search-result p-4 border rounded-lg cursor-pointer mb-2 dark:border-dark-border transition-all duration-200';
+
+            const favicon = `https://www.google.com/s2/favicons?domain=${result.url}&sz=32`;
+
+            const badge = isVerified
+                ? '<span class="text-xs text-green-600 dark:text-green-400 flex items-center whitespace-nowrap"><i class="fas fa-check-circle mr-1"></i>Verificada</span>'
+                : (result.type === 'manual'
+                    ? '<span class="text-xs text-yellow-600 dark:text-yellow-400 flex items-center whitespace-nowrap"><i class="fas fa-magic mr-1"></i>Descubrir feed</span>'
+                    : '<span class="text-xs text-blue-600 dark:text-blue-400 flex items-center whitespace-nowrap"><i class="fas fa-globe mr-1"></i>Web</span>');
+
+            el.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <img src="${favicon}" alt="" class="w-8 h-8 rounded"
+                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%239ca3af%22><path d=%22M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z%22/></svg>'">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between">
+                            <h3 class="font-semibold text-lg dark:text-dark-text pr-2">${result.title}</h3>
+                            ${badge}
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">${result.description || 'Sitio de noticias'}</p>
+                        <p class="text-blue-600 dark:text-blue-400 text-xs mt-2 truncate">
+                            <i class="fas fa-link mr-1"></i>${result.url}
+                        </p>
+                    </div>
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition whitespace-nowrap flex items-center"
+                            onclick="event.stopPropagation(); selectSearchResult(${JSON.stringify(result).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-plus mr-2"></i>Agregar
+                    </button>
+                </div>
+            `;
+
+            el.addEventListener('click', (e) => {
+                if (!e.target.closest('button')) window.open(result.url, '_blank');
+            });
+
+            return el;
+        }
+
+        async function selectSearchResult(result) {
+            try {
+                showLoading(true);
+                showNotification('Agregando fuente de noticias...', 'info');
+                closeSearchModal();
+
+                const exists = app.sources.find(s =>
+                    s.url === result.url || s.name.toLowerCase() === result.title.toLowerCase()
+                );
+                if (exists) {
+                    showLoading(false);
+                    showNotification('Esta fuente ya está agregada', 'warning');
+                    return;
+                }
+
+                let newsItems = [];
+                let sourceUrl = result.url;
+                let sourceType = 'rss';
+
+                const isManualLike = (result.type === 'manual' || result.type === 'web');
+
+                // Si es manual o web, intentamos descubrir un feed RSS sin CORS
+                if (isManualLike) {
+                    const discovered = await findRSSFeedWithoutCORS(sourceUrl);
+                    if (discovered) {
+                        sourceUrl = discovered;
+                    } else {
+                        showNotification('No encontramos RSS en esa URL. Intenta con otra ruta RSS directa (p.ej. /feed).', 'warning');
+                        // Si tenés proxy y querés, podés intentar scraping:
+                        // (comentado por defecto)
+                        // if (PROXY_BASE) {
+                        //   newsItems = await scrapeWebsiteViaProxy(result.url);
+                        //   sourceType = 'scrape';
+                        // }
+                    }
+                }
+
+                // Si ya tenemos un feed (directo o descubierto), lo usamos
+                if (sourceUrl && /(\.xml$|\/rss|\/feed|\/atom)/i.test(sourceUrl)) {
+                    try {
+                        newsItems = await fetchRSSFeed(sourceUrl);
+                        sourceType = 'rss';
+                    } catch (e) {
+                        console.log('Error leyendo RSS:', e.message);
+                    }
+                }
+
+                // Scraping fallback opcional (requiere proxy propio)
+                if (newsItems.length === 0 && PROXY_BASE) {
+                    try {
+                        showNotification('No hay RSS. Intentando extraer artículos...', 'info');
+                        newsItems = await scrapeWebsiteViaProxy(result.url);
+                        sourceType = 'scrape';
+                    } catch (e) {
+                        console.log('Scraping falló:', e.message);
+                    }
+                }
+
+                if (newsItems && newsItems.length > 0) {
+                    const source = {
+                        id: generateId(),
+                        name: result.title,
+                        url: sourceUrl || result.url,
+                        type: sourceType,
+                        lastUpdated: new Date()
+                    };
+
+                    app.sources.push(source);
+                    newsItems.forEach(item => {
+                        item.sourceId = source.id;
+                        item.sourceName = source.name;
+                        app.news.push(item);
+                    });
+
+                    saveToLocalStorage();
+                    renderSourcesList();
+                    renderNews();
+
+                    showNotification(`Fuente "${result.title}" agregada con ${newsItems.length} noticias`, 'success');
+                } else {
+                    showNotification('No pudimos obtener contenido de esta fuente. Intenta con otra o indica una URL de feed directa.', 'error');
+                }
+            } catch (error) {
+                console.error('Error agregando fuente:', error);
+                showNotification('Error al agregar la fuente: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Descubrir feed sin CORS: probar rutas típicas y validar vía rss2json
+        async function findRSSFeedWithoutCORS(baseUrl) {
+            const origin = toCandidateBaseUrl(baseUrl) || baseUrl;
+            const candidates = [
+                '/rss', '/feed', '/rss.xml', '/feed.xml', '/atom.xml',
+                '/feeds/posts/default', '/blog/feed', '/index.xml',
+                '/?feed=rss', '/?feed=rss2', '/?feed=atom'
+            ].map(p => new URL(p, origin).href);
+
+            for (const testUrl of candidates) {
+                const ok = await verifyFeedWithRss2Json(testUrl);
+                if (ok) return testUrl;
+            }
+            return null;
+        }
+
+        async function verifyFeedWithRss2Json(feedUrl) {
+            try {
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
+                const resp = await fetch(apiUrl);
+                if (!resp.ok) return false;
+                const data = await resp.json();
+                return data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0;
+            } catch {
+                return false;
+            }
+        }
+
+        async function fetchRSSFeed(url) {
+            try {
+                showNotification('Obteniendo noticias del feed RSS...', 'info');
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('rss2json respondió con error');
+                const data = await response.json();
+
+                if (data.status === 'ok' && data.items && data.items.length > 0) {
+                    return data.items.map(item => ({
+                        id: generateId(),
+                        title: item.title || 'Sin título',
+                        description: stripHtml(item.description || item.content) || '',
+                        content: stripHtml(item.content || item.description) || '',
+                        link: item.link || item.guid || '#',
+                        pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+                        author: item.author || '',
+                        image: item.enclosure?.link || item.thumbnail || extractImageFromContent(item.content || item.description),
+                        read: false,
+                        tags: []
+                    }));
+                }
+                throw new Error('No se pudo obtener el feed RSS');
+            } catch (error) {
+                console.error('Error fetching RSS feed:', error);
+                throw error;
+            }
+        }
+
+        // Scraping opcional (requiere proxy propio)
+        async function scrapeWebsiteViaProxy(url) {
+            if (!PROXY_BASE) throw new Error('PROXY_BASE no configurado');
+
+            const resp = await fetch(`${PROXY_BASE}/fetch?url=${encodeURIComponent(url)}`);
+            if (!resp.ok) throw new Error('Proxy scraping failed');
+            const html = await resp.text();
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const selectors = [
+                'article', '.article', '.post', '.news-item', '.story',
+                '[class*="article"]', '[class*="post"]', '[class*="news"]'
+            ];
+            let articles = [];
+            for (const sel of selectors) {
+                const els = doc.querySelectorAll(sel);
+                if (els.length > 0) {
+                    articles = Array.from(els).slice(0, 30);
+                    break;
+                }
+            }
+            if (articles.length === 0) {
+                const headings = doc.querySelectorAll('h2 a, h3 a');
+                articles = Array.from(headings).slice(0, 30).map(a => a.closest('h2,h3') || a.parentElement);
+            }
+
+            const base = new URL(url);
+            return articles.map(el => {
+                const titleEl = el.querySelector('h1,h2,h3,.title,.headline') || el.querySelector('a');
+                const linkEl = el.querySelector('a') || titleEl;
+                const descEl = el.querySelector('p,.summary,.excerpt,.description');
+
+                const title = titleEl ? titleEl.textContent.trim() : 'Sin título';
+                const hrefAttr = linkEl ? linkEl.getAttribute('href') : null;
+                const link = hrefAttr ? new URL(hrefAttr, base).href : url;
+                const description = descEl ? descEl.textContent.trim() : '';
+
+                return {
+                    id: generateId(),
+                    title,
+                    description,
+                    content: description,
+                    link,
+                    pubDate: new Date(),
+                    author: '',
+                    image: extractImageFromElement(el, base),
+                    read: false,
+                    tags: []
+                };
+            });
+        }
+
+        // Fuente: refresco
+        async function refreshSource(source) {
+            try {
+                let newsItems = [];
+                if (source.type === 'rss') {
+                    newsItems = await fetchRSSFeed(source.url);
+                } else if (source.type === 'scrape' && PROXY_BASE) {
+                    newsItems = await scrapeWebsiteViaProxy(source.url);
+                }
+
+                if (newsItems && newsItems.length > 0) {
+                    app.news = app.news.filter(item => item.sourceId !== source.id);
+                    newsItems.forEach(item => { item.sourceId = source.id; item.sourceName = source.name; app.news.push(item); });
+
+                    const idx = app.sources.findIndex(s => s.id === source.id);
+                    if (idx !== -1) app.sources[idx].lastUpdated = new Date();
+
+                    saveToLocalStorage();
+                    renderNews();
+                    showNotification(`Fuente "${source.name}" actualizada`, 'success');
+                } else {
+                    showNotification(`No se encontraron noticias en "${source.name}"`, 'warning');
+                }
+            } catch (error) {
+                console.error('Error refreshing source:', error);
+                showNotification(`Error al actualizar "${source.name}": ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshAllSources() {
+            showLoading(true);
+            for (const source of app.sources) {
+                await refreshSource(source);
+            }
+            showLoading(false);
+            renderNews();
+            showNotification('Todas las fuentes han sido actualizadas', 'success');
+        }
+
+        function removeSource(sourceId) {
+            app.sources = app.sources.filter(source => source.id !== sourceId);
+            app.news = app.news.filter(item => item.sourceId !== sourceId);
+            saveToLocalStorage();
+            renderSourcesList();
+            renderNews();
+            showNotification('Fuente eliminada', 'info');
+        }
+
+        // Tags
+        function addTag() {
+            const input = document.getElementById('newTagInput');
+            const value = input.value.trim();
+            if (!value) return;
+            if (!app.tags.includes(value)) {
+                app.tags.push(value);
+                saveToLocalStorage();
+                renderTags();
+                showNotification(`Palabra clave "${value}" agregada`, 'success');
+            }
+            input.value = '';
+        }
+        function removeTag(tag) {
+            app.tags = app.tags.filter(t => t !== tag);
+            app.news.forEach(item => { item.tags = item.tags.filter(t => t !== tag); });
+            app.activeFilters.tags = app.activeFilters.tags.filter(t => t !== tag);
+            saveToLocalStorage();
+            renderTags();
+            renderNews();
+            showNotification(`Palabra clave "${tag}" eliminada`, 'info');
+        }
+        function toggleTagFilter(tag) {
+            const idx = app.activeFilters.tags.indexOf(tag);
+            if (idx === -1) app.activeFilters.tags.push(tag);
+            else app.activeFilters.tags.splice(idx, 1);
+            renderTags();
+            renderNews();
+        }
+
+        // News
+        function markAsRead(newsId) {
+            const newsItem = app.news.find(i => i.id === newsId);
+            if (newsItem) {
+                newsItem.read = true;
+                saveToLocalStorage();
+            }
+        }
+        function addTagToNews(newsId, tag) {
+            const item = app.news.find(i => i.id === newsId);
+            if (item && !item.tags.includes(tag)) {
+                item.tags.push(tag);
+                saveToLocalStorage();
+                renderNews();
+            }
+        }
+        function removeTagFromNews(newsId, tag) {
+            const item = app.news.find(i => i.id === newsId);
+            if (item) {
+                item.tags = item.tags.filter(t => t !== tag);
+                saveToLocalStorage();
+                renderNews();
+            }
+        }
+
+        function openNewsModal(newsId) {
+            const item = app.news.find(i => i.id === newsId);
+            if (!item) return;
+            app.currentNewsDetail = item;
+
+            document.getElementById('modalTitle').textContent = item.title;
+            document.getElementById('modalContent').innerHTML = `
+                <div class="mb-4">
+                    ${item.image ? `<img src="${item.image}" alt="${item.title}" class="w-full max-h-64 object-cover rounded mb-4">` : ''}
+                    <p class="text-gray-600 mb-2 dark:text-gray-400">
+                        <i class="fas fa-newspaper mr-1"></i> ${item.sourceName}
+                        <span class="mx-2">|</span>
+                        <i class="fas fa-calendar mr-1"></i> ${formatDate(item.pubDate)}
+                        ${item.author ? `<span class="mx-2">|</span><i class="fas fa-user mr-1"></i> ${item.author}` : ''}
+                    </p>
+                </div>
+                <div class="prose max-w-none dark:prose-invert">${item.content || item.description}</div>
+            `;
+
+            const tagsContainer = document.getElementById('modalTags');
+            tagsContainer.innerHTML = '';
+            item.tags.forEach(tag => {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm dark:bg-blue-900 dark:text-blue-200';
+                tagEl.innerHTML = `
+                    ${tag}
+                    <button class="ml-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200" onclick="removeTagFromNews('${newsId}', '${tag}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                tagsContainer.appendChild(tagEl);
+            });
+
+            const tagSelector = document.createElement('select');
+            tagSelector.className = 'px-2 py-1 border border-gray-300 rounded text-sm dark:bg-dark-card dark:border-dark-border dark:text-dark-text';
+            tagSelector.innerHTML = '<option value="">Añadir palabra clave...</option>';
+            app.tags.forEach(tag => {
+                if (!item.tags.includes(tag)) {
+                    const opt = document.createElement('option');
+                    opt.value = tag; opt.textContent = tag;
+                    tagSelector.appendChild(opt);
+                }
+            });
+            tagSelector.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    addTagToNews(newsId, e.target.value);
+                    openNewsModal(newsId);
+                }
+            });
+            tagsContainer.appendChild(tagSelector);
+
+            document.getElementById('newsModal').classList.remove('hidden');
+            markAsRead(newsId);
+        }
+
+        function closeModal() {
+            document.getElementById('newsModal').classList.add('hidden');
+            app.currentNewsDetail = null;
+        }
+
+        // Rendering
+        function renderSourcesList() {
+            const container = document.getElementById('sourcesList');
+            const noSources = document.getElementById('noSources');
+
+            if (app.sources.length === 0) {
+                container.innerHTML = '';
+                noSources.classList.remove('hidden');
+            } else {
+                container.innerHTML = '';
+                noSources.classList.add('hidden');
+
+                app.sources.forEach(source => {
+                    const el = document.createElement('div');
+                    el.className = 'flex items-center justify-between p-2 rounded hover:bg-gray-100 transition dark:hover:bg-gray-700';
+                    el.dataset.sourceId = source.id;
+
+                    el.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-rss text-blue-600 dark:text-blue-400"></i>
+                            <span class="font-medium dark:text-dark-text">${source.name}</span>
+                        </div>
+                        <div class="flex space-x-1">
+                            <button class="p-1 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400" onclick="refreshSource(${JSON.stringify(source).replace(/"/g, '&quot;')})">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="p-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400" onclick="removeSource('${source.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    el.addEventListener('click', (e) => {
+                        if (e.target.closest('button')) return;
+                        app.activeFilters.source = source.id;
+                        renderNews();
+                        document.getElementById('currentViewTitle').textContent = source.name;
+                    });
+
+                    container.appendChild(el);
+                });
+            }
+
+            renderSourceTabs();
+        }
+
+        function renderSourceTabs() {
+            const container = document.getElementById('sourceTabs');
+            container.innerHTML = '';
+
+            const allTab = document.createElement('button');
+            allTab.className = `source-tab px-3 py-1 rounded-t-lg whitespace-nowrap ${!app.activeFilters.source ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text'}`;
+            allTab.textContent = 'Todas las Fuentes';
+            allTab.addEventListener('click', () => {
+                app.activeFilters.source = null;
+                renderNews();
+                document.getElementById('currentViewTitle').textContent = 'Todas las Noticias';
+            });
+            container.appendChild(allTab);
+
+            app.sources.forEach(source => {
+                const tab = document.createElement('button');
+                tab.className = `source-tab px-3 py-1 rounded-t-lg whitespace-nowrap ${app.activeFilters.source === source.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text'}`;
+                tab.textContent = source.name;
+                tab.addEventListener('click', () => {
+                    app.activeFilters.source = source.id;
+                    renderNews();
+                    document.getElementById('currentViewTitle').textContent = source.name;
+                });
+                container.appendChild(tab);
+            });
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tagsContainer');
+            container.innerHTML = '';
+            app.tags.forEach(tag => {
+                const isActive = app.activeFilters.tags.includes(tag);
+                const tagElement = document.createElement('button');
+                tagElement.className = `tag-pill px-3 py-1 rounded-full text-sm ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-dark-card dark:border dark:border-dark-border dark:text-dark-text'}`;
+                tagElement.innerHTML = `
+                    ${tag}
+                    <button class="ml-1" onclick="event.stopPropagation(); removeTag('${tag}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                tagElement.addEventListener('click', () => toggleTagFilter(tag));
+                container.appendChild(tagElement);
+            });
+        }
+
+        function renderNews() {
+            const container = document.getElementById('newsContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            let list = [...app.news];
+
+            if (app.activeFilters.source) {
+                list = list.filter(i => i.sourceId === app.activeFilters.source);
+            }
+            if (app.activeFilters.tags.length > 0) {
+                list = list.filter(i => app.activeFilters.tags.some(t => i.tags.includes(t)));
+            }
+            if (app.activeFilters.unread) {
+                list = list.filter(i => !i.read);
+            }
+
+            list.sort((a, b) => {
+                switch (app.sortBy) {
+                    case 'date': return new Date(b.pubDate) - new Date(a.pubDate);
+                    case 'source': return (a.sourceName || '').localeCompare(b.sourceName || '');
+                    case 'title': return (a.title || '').localeCompare(b.title || '');
+                    default: return 0;
+                }
+            });
+
+            if (list.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.innerHTML = '';
+
+            if (app.viewMode === 'list') {
+                list.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = `news-item p-4 border rounded-lg ${item.read ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-dark-card'} hover:shadow-md cursor-pointer dark:border-dark-border`;
+
+                    el.innerHTML = `
+                        <div class="flex items-start space-x-3">
+                            ${item.image ? `<img src="${item.image}" alt="${item.title}" class="w-20 h-20 object-cover rounded">`
+                                          : '<div class="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center"><i class="fas fa-newspaper text-gray-400 dark:text-gray-500"></i></div>'}
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg ${item.read ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-dark-text'}">${item.title}</h3>
+                                <p class="text-gray-600 mt-1 dark:text-gray-400">${item.description ? item.description.substring(0, 150) + '...' : ''}</p>
+                                <div class="flex items-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                    <span><i class="fas fa-newspaper mr-1"></i> ${item.sourceName}</span>
+                                    <span class="mx-2">|</span>
+                                    <span><i class="fas fa-calendar mr-1"></i> ${formatDate(item.pubDate)}</span>
+                                    ${item.tags.length > 0 ? `
+                                        <span class="mx-2">|</span>
+                                        <div class="flex space-x-1">
+                                            ${item.tags.map(tag => `<span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs dark:bg-blue-900 dark:text-blue-200">${tag}</span>`).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div class="flex flex-col space-y-2">
+                                ${!item.read
+                                    ? `<button class="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400" onclick="event.stopPropagation(); markAsRead('${item.id}'); renderNews();"><i class="fas fa-envelope"></i></button>`
+                                    : `<button class="p-2 text-blue-600 dark:text-blue-400" onclick="event.stopPropagation();"><i class="fas fa-envelope-open"></i></button>`
+                                }
+                                <button class="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400" onclick="event.stopPropagation(); window.open('${item.link}', '_blank')"><i class="fas fa-external-link-alt"></i></button>
+                            </div>
+                        </div>
+                    `;
+
+                    el.addEventListener('click', () => openNewsModal(item.id));
+                    container.appendChild(el);
+                });
+            } else {
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+
+                list.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = `news-item border rounded-lg overflow-hidden ${item.read ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-dark-card'} hover:shadow-md cursor-pointer h-full flex flex-col dark:border-dark-border`;
+
+                    el.innerHTML = `
+                        ${item.image ? `<img src="${item.image}" alt="${item.title}" class="w-full h-40 object-cover">`
+                                      : '<div class="w-full h-40 bg-gray-200 dark:bg-gray-700 flex items-center justify-center"><i class="fas fa-newspaper text-gray-400 dark:text-gray-500 text-2xl"></i></div>'}
+                        <div class="p-4 flex-1 flex flex-col">
+                            <h3 class="font-semibold text-lg ${item.read ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-dark-text'}">${item.title}</h3>
+                            <p class="text-gray-600 mt-1 flex-1 dark:text-gray-400">${item.description ? item.description.substring(0, 100) + '...' : ''}</p>
+                            <div class="flex items-center justify-between mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                <span><i class="fas fa-newspaper mr-1"></i> ${item.sourceName}</span>
+                                <span><i class="fas fa-calendar mr-1"></i> ${formatDate(item.pubDate)}</span>
+                            </div>
+                            ${item.tags.length > 0 ? `
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    ${item.tags.map(tag => `<span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs dark:bg-blue-900 dark:text-blue-200">${tag}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                            <div class="flex justify-end space-x-2 mt-3">
+                                ${!item.read
+                                    ? `<button class="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400" onclick="event.stopPropagation(); markAsRead('${item.id}'); renderNews();"><i class="fas fa-envelope"></i></button>`
+                                    : `<button class="p-2 text-blue-600 dark:text-blue-400" onclick="event.stopPropagation();"><i class="fas fa-envelope-open"></i></button>`
+                                }
+                                <button class="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400" onclick="event.stopPropagation(); window.open('${item.link}', '_blank')"><i class="fas fa-external-link-alt"></i></button>
+                            </div>
+                        </div>
+                    `;
+
+                    el.addEventListener('click', () => openNewsModal(item.id));
+                    grid.appendChild(el);
+                });
+
+                container.appendChild(grid);
+            }
+        }
+
+        // Chatbot
+        function initializeChatbot() {
+            const chatbotToggle = document.getElementById('chatbotToggle');
+            const chatbotWindow = document.getElementById('chatbotWindow');
+            const chatbotClose = document.getElementById('chatbotClose');
+            const chatInput = document.getElementById('chatInput');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+
+            chatbotToggle.addEventListener('click', () => {
+                chatbotWindow.classList.toggle('hidden');
+                if (!chatbotWindow.classList.contains('hidden')) renderChatMessages();
+            });
+            chatbotClose.addEventListener('click', () => chatbotWindow.classList.add('hidden'));
+            chatSendBtn.addEventListener('click', sendChatMessage);
+            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+
+            if (app.chatHistory.length === 0) {
+                app.chatHistory.push({
+                    role: 'assistant',
+                    content: '¡Hola! Soy tu asistente de noticias. Puedo ayudarte a encontrar información o responder preguntas. ¿En qué te ayudo hoy?'
+                });
+                saveToLocalStorage();
+            }
+        }
+        function renderChatMessages() {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            app.chatHistory.forEach(m => {
+                const el = document.createElement('div');
+                el.className = `chat-message ${m.role === 'user' ? 'text-right' : 'text-left'}`;
+                const bubble = m.role === 'user'
+                    ? 'bg-blue-600 text-white rounded-tl-lg rounded-tr-lg rounded-bl-lg'
+                    : 'bg-gray-200 text-gray-800 rounded-tl-lg rounded-tr-lg rounded-br-lg dark:bg-gray-700 dark:text-gray-200';
+                el.innerHTML = `<div class="inline-block max-w-xs px-4 py-2 ${bubble}">${m.content}</div>`;
+                container.appendChild(el);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            app.chatHistory.push({ role: 'user', content: message });
+            input.value = '';
+            renderChatMessages();
+
+            const typingEl = document.createElement('div');
+            typingEl.className = 'chat-message text-left';
+            typingEl.innerHTML = `
+                <div class="inline-block max-w-xs px-4 py-2 bg-gray-200 text-gray-800 rounded-tl-lg rounded-tr-lg rounded-br-lg dark:bg-gray-700 dark:text-gray-200">
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                </div>
+            `;
+            const container = document.getElementById('chatMessages');
+            container.appendChild(typingEl);
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                const prompt = `Eres un asistente de noticias útil y amigable. Responde de forma concisa: ${message}`;
+                const resp = await fetch('https://text.pollinations.ai/prompt/' + encodeURIComponent(prompt));
+                if (!resp.ok) throw new Error('API request failed');
+                const text = await resp.text();
+                container.removeChild(typingEl);
+                app.chatHistory.push({ role: 'assistant', content: text });
+                saveToLocalStorage();
+                renderChatMessages();
+            } catch (e) {
+                console.error('Error llamando a Pollinations:', e);
+                container.removeChild(typingEl);
+                app.chatHistory.push({
+                    role: 'assistant',
+                    content: 'Tuve un problema al procesar tu solicitud. Inténtalo de nuevo más tarde.'
+                });
+                saveToLocalStorage();
+                renderChatMessages();
+            }
+        }
+
+        // Utils
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2);
+        }
+        function formatDate(date) {
+            if (!date) return '';
+            if (!(date instanceof Date)) date = new Date(date);
+            if (isNaN(date.getTime())) return 'Fecha desconocida';
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            if (days === 0) {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                if (hours === 0) {
+                    const minutes = Math.floor(diff / (1000 * 60));
+                    return minutes <= 1 ? 'Ahora mismo' : `Hace ${minutes} minutos`;
+                }
+                return hours === 1 ? 'Hace 1 hora' : `Hace ${hours} horas`;
+            } else if (days === 1) {
+                return 'Ayer';
+            } else if (days < 7) {
+                return `Hace ${days} días`;
+            } else {
+                return date.toLocaleDateString('es-ES', {
+                    day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                });
+            }
+        }
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const n = document.createElement('div');
+            n.className = `notification px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' : 'bg-blue-500 text-white'
+            }`;
+            const icon = type === 'success' ? 'fa-check-circle' :
+                         type === 'error' ? 'fa-exclamation-circle' :
+                         type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+            n.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+            container.appendChild(n);
+            setTimeout(() => {
+                n.style.opacity = '0';
+                n.style.transform = 'translateX(100%)';
+                setTimeout(() => { if (n.parentNode) container.removeChild(n); }, 300);
+            }, 3000);
+        }
+        function showLoading(show) {
+            const el = document.getElementById('loadingIndicator');
+            el.classList.toggle('hidden', !show);
+        }
+        function stripHtml(html) {
+            if (!html) return '';
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            return temp.textContent || temp.innerText || '';
+        }
+        function extractImageFromContent(content) {
+            if (!content) return '';
+            const match = content.match(/<img[^>]+src="([^"]+)"/i);
+            return match ? match[1] : '';
+        }
+        function extractImageFromElement(element, baseUrl) {
+            const img = element.querySelector('img');
+            if (!img) return '';
+            const src = img.getAttribute('src');
+            try { return new URL(src, baseUrl).href; } catch { return src || ''; }
+        }
+    </script>
+</body>
+</html>
