@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memotest Marino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .perspective {
+            perspective: 1000px;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        .card-flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .card-front {
+            background-color: #1e40af; /* Azul oscuro */
+            color: white;
+        }
+        .card-back {
+            background-color: #f0f9ff; /* Azul muy claro */
+            transform: rotateY(180deg);
+        }
+        .matched {
+            opacity: 0.7;
+            cursor: default;
+        }
+        @keyframes celebrate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .winner-anim {
+            animation: celebrate 0.5s ease infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-cyan-500 to-blue-700 min-h-screen flex flex-col items-center p-4 font-sans text-white">
+
+    <!-- Encabezado y Estadísticas -->
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold mb-2 drop-shadow-lg">Memotest Marino 🌊</h1>
+        <p class="text-cyan-100">Encuentra todas las parejas de animales</p>
+    </div>
+
+    <div class="flex gap-8 mb-6 bg-white/20 backdrop-blur-md p-4 rounded-2xl shadow-xl">
+        <div class="text-center">
+            <span class="block text-xs uppercase tracking-widest opacity-80">Movimientos</span>
+            <span id="moves" class="text-2xl font-mono font-bold">0</span>
+        </div>
+        <div class="text-center">
+            <span class="block text-xs uppercase tracking-widest opacity-80">Parejas</span>
+            <span id="matches" class="text-2xl font-mono font-bold">0/8</span>
+        </div>
+    </div>
+
+    <!-- Tablero de Juego -->
+    <div id="game-board" class="grid grid-cols-4 gap-3 md:gap-4 w-full max-w-md aspect-square mb-8">
+        <!-- Las fichas se generarán con JS -->
+    </div>
+
+    <!-- Botón de Reinicio -->
+    <button id="reset-btn" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-3 px-8 rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+        Reiniciar Juego
+    </button>
+
+    <!-- Modal de Victoria -->
+    <div id="victory-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white text-blue-900 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-3xl font-bold mb-2">¡Increíble!</h2>
+            <p class="mb-6">Completaste el Memotest Marino en <span id="final-moves" class="font-bold">0</span> movimientos.</p>
+            <button onclick="resetGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">
+                Jugar de nuevo
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de los animales (usando Emojis para simplicidad y compatibilidad total, 
+        // pero estilizados como iconos grandes)
+        const animals = [
+            { icon: '🐙', name: 'Pulpo' },
+            { icon: '🐋', name: 'Ballena' },
+            { icon: '🦀', name: 'Cangrejo' },
+            { icon: '🐢', name: 'Tortuga' },
+            { icon: '🐬', name: 'Delfín' },
+            { icon: '🦈', name: 'Tiburón' },
+            { icon: '🐠', name: 'Pez Tropical' },
+            { icon: '🦐', name: 'Camarón' }
+        ];
+
+        let cards = [];
+        let flippedCards = [];
+        let moves = 0;
+        let matches = 0;
+        let canFlip = true;
+
+        const board = document.getElementById('game-board');
+        const movesDisplay = document.getElementById('moves');
+        const matchesDisplay = document.getElementById('matches');
+        const resetBtn = document.getElementById('reset-btn');
+        const modal = document.getElementById('victory-modal');
+
+        // Inicializar juego
+        function initGame() {
+            // Duplicar los animales para crear parejas
+            const deck = [...animals, ...animals];
+            // Barajar
+            deck.sort(() => Math.random() - 0.5);
+            
+            board.innerHTML = '';
+            cards = [];
+            moves = 0;
+            matches = 0;
+            flippedCards = [];
+            canFlip = true;
+            
+            updateStats();
+            modal.classList.add('hidden');
+
+            deck.forEach((animal, index) => {
+                const card = document.createElement('div');
+                card.className = 'perspective h-full w-full';
+                card.innerHTML = `
+                    <div class="card-inner w-full h-full" data-index="${index}" data-name="${animal.name}">
+                        <div class="card-front text-2xl md:text-3xl font-bold">?</div>
+                        <div class="card-back text-4xl md:text-5xl">${animal.icon}</div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => flipCard(card));
+                board.appendChild(card);
+                cards.push(card);
+            });
+        }
+
+        function flipCard(cardElement) {
+            const inner = cardElement.querySelector('.card-inner');
+            
+            // Validaciones: no voltear si ya está volteada, si hay dos en proceso, o si ya es match
+            if (!canFlip || cardElement.classList.contains('card-flipped') || cardElement.classList.contains('matched')) {
+                return;
+            }
+
+            cardElement.classList.add('card-flipped');
+            flippedCards.push(cardElement);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                updateStats();
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            const name1 = card1.querySelector('.card-inner').dataset.name;
+            const name2 = card2.querySelector('.card-inner').dataset.name;
+
+            canFlip = false;
+
+            if (name1 === name2) {
+                // Es pareja
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matches++;
+                    updateStats();
+                    flippedCards = [];
+                    canFlip = true;
+                    
+                    if (matches === animals.length) {
+                        showVictory();
+                    }
+                }, 500);
+            } else {
+                // No es pareja
+                setTimeout(() => {
+                    card1.classList.remove('card-flipped');
+                    card2.classList.remove('card-flipped');
+                    flippedCards = [];
+                    canFlip = true;
+                }, 1000);
+            }
+        }
+
+        function updateStats() {
+            movesDisplay.innerText = moves;
+            matchesDisplay.innerText = `${matches}/${animals.length}`;
+        }
+
+        function showVictory() {
+            document.getElementById('final-moves').innerText = moves;
+            setTimeout(() => {
+                modal.classList.remove('hidden');
+            }, 600);
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        resetBtn.addEventListener('click', resetGame);
+
+        // Iniciar al cargar
+        window.onload = initGame;
+    </script>
+</body>
+</html>
