@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logopedia Digital - Conciencia Fonológica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f0f9ff;
+        }
+
+        .card-item {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+
+        .card-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-item:active {
+            transform: scale(0.95);
+        }
+
+        .success-flash {
+            animation: success-bg 0.5s ease;
+        }
+
+        @keyframes success-bg {
+            0% { background-color: #f0f9ff; }
+            50% { background-color: #bbf7d0; }
+            100% { background-color: #f0f9ff; }
+        }
+
+        .error-shake {
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .pulse-button {
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="max-w-2xl w-full bg-white rounded-3xl shadow-xl overflow-hidden border-4 border-blue-100">
+        <!-- Cabecera -->
+        <div class="bg-blue-500 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold uppercase tracking-wide">Desafío de Sonidos</h1>
+            <div class="flex justify-between mt-4 px-4 items-center">
+                <div class="bg-blue-600 rounded-full px-4 py-1 text-sm">
+                    Ronda: <span id="round-count">1</span> / 10
+                </div>
+                <div class="bg-yellow-400 text-blue-900 rounded-full px-4 py-1 text-sm font-bold">
+                    Puntos: <span id="score-count">0</span>
+                </div>
+            </div>
+            <!-- Barra de Progreso -->
+            <div class="w-full bg-blue-700 h-3 rounded-full mt-4 overflow-hidden">
+                <div id="progress-bar" class="bg-yellow-400 h-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Área de Instrucción -->
+        <div class="p-8 text-center">
+            <div id="instruction-box" class="mb-8">
+                <p class="text-gray-500 text-lg mb-4">Escucha el sonido y elige el dibujo:</p>
+                <div class="flex flex-col items-center justify-center gap-6">
+                    <span id="target-phoneme" class="text-8xl font-black text-blue-600 leading-none">S</span>
+                    <button id="btn-repeat" class="pulse-button bg-blue-500 hover:bg-blue-600 p-5 rounded-full shadow-lg transition-all transform active:scale-90 group">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    </button>
+                    <p class="text-blue-400 font-semibold text-sm uppercase tracking-widest">Toca para escuchar</p>
+                </div>
+            </div>
+
+            <!-- Rejilla de Opciones -->
+            <div id="options-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- Se genera con JS -->
+            </div>
+        </div>
+
+        <!-- Footer Informativo -->
+        <div class="bg-gray-50 p-4 border-t text-center text-xs text-gray-400">
+            Herramienta de Estimulación Fonoaudiológica v2.1
+        </div>
+    </div>
+
+    <!-- Modal de Resultados -->
+    <div id="result-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <h2 class="text-3xl font-bold text-blue-600 mb-2">¡Terminado!</h2>
+            <p id="final-message" class="text-gray-600 mb-6">Lo has hecho genial.</p>
+            <div class="text-5xl mb-6" id="final-medal">🥇</div>
+            <button onclick="location.reload()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full w-full transition-transform active:scale-95">
+                JUGAR OTRA VEZ
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const library = [
+            { f: 'A', w: 'Avión', e: '✈️' }, { f: 'E', w: 'Elefante', e: '🐘' },
+            { f: 'I', w: 'Isla', e: '🏝️' }, { f: 'O', w: 'Oso', e: '🐻' },
+            { f: 'U', w: 'Uvas', e: '🍇' }, { f: 'M', w: 'Mesa', e: 'table' },
+            { f: 'P', w: 'Pelota', e: '⚽' }, { f: 'S', w: 'Sol', e: '☀️' },
+            { f: 'L', w: 'Luna', e: '🌙' }, { f: 'T', w: 'Tren', e: '🚂' },
+            { f: 'D', w: 'Dado', e: '🎲' }, { f: 'F', w: 'Fuego', e: '🔥' },
+            { f: 'G', w: 'Gato', e: '🐱' }, { f: 'B', w: 'Barco', e: '🚢' },
+            { f: 'R', w: 'Rana', e: '🐸' }
+        ];
+
+        const emojiMap = {
+            'Mesa': '🪑',
+            'Pelota': '⚽',
+            'Sol': '☀️',
+            'Avión': '✈️'
+        };
+
+        let score = 0;
+        let round = 1;
+        let currentTarget = null;
+        const totalRounds = 10;
+
+        const synth = window.speechSynthesis;
+
+        function speak(text) {
+            if (synth.speaking) synth.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Intentar encontrar una voz latinoamericana
+            const voices = synth.getVoices();
+            const latamVoice = voices.find(v => 
+                v.lang === 'es-MX' || v.lang === 'es-US' || v.lang === 'es-AR' || v.lang.includes('es-419')
+            );
+            
+            if (latamVoice) {
+                utterance.voice = latamVoice;
+            } else {
+                utterance.lang = 'es-ES';
+            }
+            
+            utterance.rate = 0.85; // Un poco más lento para claridad fonoaudiológica
+            utterance.pitch = 1.1; // Un tono ligeramente más amigable para niños
+            synth.speak(utterance);
+        }
+
+        function speakInstruction() {
+            if (!currentTarget) return;
+            // Énfasis en el fonema inicial
+            speak(`Busca el dibujo que empieza con el sonido... ${currentTarget.f}... ${currentTarget.f}... como en la palabra... ${currentTarget.w}`);
+        }
+
+        function generateRound() {
+            if (round > totalRounds) {
+                showResults();
+                return;
+            }
+
+            document.getElementById('round-count').innerText = round;
+            document.getElementById('progress-bar').style.width = `${(round-1) * 10}%`;
+
+            currentTarget = library[Math.floor(Math.random() * library.length)];
+            document.getElementById('target-phoneme').innerText = currentTarget.f;
+
+            let distractors = library
+                .filter(item => item.f !== currentTarget.f)
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 5);
+
+            let options = [currentTarget, ...distractors].sort(() => 0.5 - Math.random());
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+
+            options.forEach(opt => {
+                const btn = document.createElement('div');
+                btn.className = 'card-item bg-white border-2 border-gray-100 rounded-2xl p-6 flex flex-col items-center justify-center text-5xl shadow-sm';
+                btn.innerHTML = `<span>${emojiMap[opt.w] || opt.e}</span>`;
+                btn.onclick = () => handleChoice(opt, btn);
+                grid.appendChild(btn);
+            });
+
+            setTimeout(speakInstruction, 500);
+        }
+
+        function handleChoice(choice, element) {
+            if (choice.f === currentTarget.f) {
+                score++;
+                document.getElementById('score-count').innerText = score;
+                element.classList.remove('border-gray-100');
+                element.classList.add('border-green-500', 'bg-green-50');
+                document.body.classList.add('success-flash');
+                speak("¡Excelente trabajo!");
+                
+                setTimeout(() => {
+                    document.body.classList.remove('success-flash');
+                    round++;
+                    generateRound();
+                }, 1500);
+            } else {
+                element.classList.add('border-red-500', 'bg-red-50', 'error-shake');
+                speak("Ese empieza con otro sonido, ¡intenta de nuevo!");
+                setTimeout(() => {
+                    element.classList.remove('error-shake', 'border-red-500', 'bg-red-50');
+                }, 800);
+            }
+        }
+
+        function showResults() {
+            const modal = document.getElementById('result-modal');
+            const msg = document.getElementById('final-message');
+            const medal = document.getElementById('final-medal');
+            
+            modal.style.display = 'flex';
+            msg.innerText = `Has conseguido ${score} de ${totalRounds} aciertos.`;
+            
+            if (score >= 9) {
+                medal.innerText = '🏆';
+                speak("¡Increíble! Eres un experto en sonidos.");
+            } else if (score >= 7) {
+                medal.innerText = '🥇';
+                speak("¡Muy bien hecho! Lo lograste.");
+            } else {
+                medal.innerText = '🥈';
+                speak("¡Buen esfuerzo! Sigue practicando.");
+            }
+        }
+
+        document.getElementById('btn-repeat').onclick = speakInstruction;
+
+        // Necesario para cargar las voces en algunos navegadores
+        window.speechSynthesis.onvoiceschanged = () => {};
+
+        window.onload = () => {
+            generateRound();
+        };
+    </script>
+</body>
+</html>
