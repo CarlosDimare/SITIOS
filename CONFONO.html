@@ -3,169 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logopedia Digital - Conciencia Fonológica</title>
+    <title>Logopedia Digital - Intrusos Marinos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap');
         
         body {
             font-family: 'Quicksand', sans-serif;
-            background-color: #f0f9ff;
+            background-color: #f0f9ff; /* Azul agua muy claro */
         }
 
         .card-item {
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
+            border-width: 4px;
         }
 
         .card-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.1);
         }
 
         .card-item:active {
             transform: scale(0.95);
         }
 
-        .success-flash {
-            animation: success-bg 0.5s ease;
+        .success-animation {
+            animation: bounce 0.5s ease;
         }
 
-        @keyframes success-bg {
-            0% { background-color: #f0f9ff; }
-            50% { background-color: #bbf7d0; }
-            100% { background-color: #f0f9ff; }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
 
-        .error-shake {
-            animation: shake 0.5s ease;
+        .shake {
+            animation: shake 0.4s ease-in-out;
         }
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
         }
 
-        .pulse-button {
-            animation: pulse-animation 2s infinite;
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: rise 4s infinite ease-in;
         }
 
-        @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-            100% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0); }
+        @keyframes rise {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 overflow-hidden relative">
+    
+    <!-- Burbujas decorativas de fondo -->
+    <div id="bubbles-container"></div>
 
-    <div id="app" class="max-w-2xl w-full bg-white rounded-3xl shadow-xl overflow-hidden border-4 border-blue-100">
-        <!-- Cabecera -->
-        <div class="bg-blue-500 p-6 text-white text-center">
-            <h1 class="text-2xl font-bold uppercase tracking-wide">Desafío de Sonidos</h1>
-            <div class="flex justify-between mt-4 px-4 items-center">
-                <div class="bg-blue-600 rounded-full px-4 py-1 text-sm">
-                    Ronda: <span id="round-count">1</span> / 10
+    <div id="app" class="max-w-4xl w-full bg-white rounded-[40px] shadow-2xl overflow-hidden border-8 border-blue-100 z-10">
+        <!-- Cabecera Visual -->
+        <div class="bg-blue-500 p-8 text-white text-center relative">
+            <h1 class="text-3xl font-black uppercase tracking-tighter">¡Intrusos en el Mar! 🌊</h1>
+            <p class="text-blue-100 font-bold">Busca al animal que empieza con un sonido diferente</p>
+            
+            <div class="flex justify-between mt-6 items-center">
+                <div class="bg-blue-700 rounded-2xl px-6 py-2 font-bold shadow-inner">
+                    Nivel: <span id="round-count">1</span> / 10
                 </div>
-                <div class="bg-yellow-400 text-blue-900 rounded-full px-4 py-1 text-sm font-bold">
-                    Puntos: <span id="score-count">0</span>
+                <div class="bg-yellow-400 text-blue-900 rounded-2xl px-6 py-2 font-black shadow-lg">
+                    🐚 <span id="score-count">0</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Área de Juego -->
+        <div class="p-8">
             <!-- Barra de Progreso -->
-            <div class="w-full bg-blue-700 h-3 rounded-full mt-4 overflow-hidden">
-                <div id="progress-bar" class="bg-yellow-400 h-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-        </div>
+            <div class="flex gap-2 mb-8 justify-center" id="progress-dots"></div>
 
-        <!-- Área de Instrucción -->
-        <div class="p-8 text-center">
-            <div id="instruction-box" class="mb-8">
-                <p class="text-gray-500 text-lg mb-4">Escucha el sonido y elige el dibujo:</p>
-                <div class="flex flex-col items-center justify-center gap-6">
-                    <span id="target-phoneme" class="text-8xl font-black text-blue-600 leading-none">S</span>
-                    <button id="btn-repeat" class="pulse-button bg-blue-500 hover:bg-blue-600 p-5 rounded-full shadow-lg transition-all transform active:scale-90 group">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                    </button>
-                    <p class="text-blue-400 font-semibold text-sm uppercase tracking-widest">Toca para escuchar</p>
+            <div id="game-area" class="flex flex-col items-center">
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-8">
+                    <!-- Fichas dinámicas -->
                 </div>
             </div>
 
-            <!-- Rejilla de Opciones -->
-            <div id="options-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <!-- Se genera con JS -->
+            <!-- Panel de Explicación -->
+            <div id="feedback-panel" class="min-h-[120px] bg-blue-50 rounded-3xl p-6 flex flex-col items-center justify-center text-center transition-all opacity-0 border-2 border-dashed border-blue-200">
+                <h3 id="feedback-title" class="text-xl font-bold mb-1"></h3>
+                <p id="feedback-text" class="text-gray-600 font-medium"></p>
             </div>
         </div>
 
-        <!-- Footer Informativo -->
-        <div class="bg-gray-50 p-4 border-t text-center text-xs text-gray-400">
-            Herramienta de Estimulación Fonoaudiológica v2.1
+        <!-- Footer -->
+        <div class="bg-gray-50 p-4 text-center text-blue-300 font-bold text-sm uppercase tracking-widest">
+            Edición Marina: Conciencia Fonológica
         </div>
     </div>
 
-    <!-- Modal de Resultados -->
-    <div id="result-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
-            <h2 class="text-3xl font-bold text-blue-600 mb-2">¡Terminado!</h2>
-            <p id="final-message" class="text-gray-600 mb-6">Lo has hecho genial.</p>
-            <div class="text-5xl mb-6" id="final-medal">🥇</div>
-            <button onclick="location.reload()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full w-full transition-transform active:scale-95">
-                JUGAR OTRA VEZ
+    <!-- Modal Final -->
+    <div id="result-modal" class="fixed inset-0 bg-blue-900/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-[40px] p-10 max-w-sm w-full text-center shadow-2xl border-t-8 border-blue-400">
+            <div class="text-7xl mb-4">🐳</div>
+            <h2 class="text-3xl font-black text-blue-600 mb-2">¡MISIÓN CUMPLIDA!</h2>
+            <p id="final-message" class="text-gray-500 font-medium mb-8 text-lg"></p>
+            <button onclick="location.reload()" class="bg-blue-500 hover:bg-blue-600 text-white font-black py-4 px-10 rounded-2xl w-full shadow-lg transition-transform active:scale-95 text-xl">
+                NADAR OTRA VEZ
             </button>
         </div>
     </div>
 
     <script>
-        const library = [
-            { f: 'A', w: 'Avión', e: '✈️' }, { f: 'E', w: 'Elefante', e: '🐘' },
-            { f: 'I', w: 'Isla', e: '🏝️' }, { f: 'O', w: 'Oso', e: '🐻' },
-            { f: 'U', w: 'Uvas', e: '🍇' }, { f: 'M', w: 'Mesa', e: 'table' },
-            { f: 'P', w: 'Pelota', e: '⚽' }, { f: 'S', w: 'Sol', e: '☀️' },
-            { f: 'L', w: 'Luna', e: '🌙' }, { f: 'T', w: 'Tren', e: '🚂' },
-            { f: 'D', w: 'Dado', e: '🎲' }, { f: 'F', w: 'Fuego', e: '🔥' },
-            { f: 'G', w: 'Gato', e: '🐱' }, { f: 'B', w: 'Barco', e: '🚢' },
-            { f: 'R', w: 'Rana', e: '🐸' }
-        ];
-
-        const emojiMap = {
-            'Mesa': '🪑',
-            'Pelota': '⚽',
-            'Sol': '☀️',
-            'Avión': '✈️'
+        // Diccionario exclusivo con temática marina
+        const dictionary = {
+            'B': [{w: 'Ballena', e: '🐳'}, {w: 'Barco', e: '🚢'}, {w: 'Buzo', e: '🤿'}],
+            'P': [{w: 'Pez', e: '🐟'}, {w: 'Pulpo', e: '🐙'}, {w: 'Pingüino', e: '🐧'}],
+            'C': [{w: 'Cangrejo', e: '🦀'}, {w: 'Caballito', e: '🐴'}, {w: 'Concha', e: '🐚'}],
+            'T': [{w: 'Tiburón', e: '🦈'}, {w: 'Tortuga', e: '🐢'}, {w: 'Tesoro', e: '💰'}],
+            'F': [{w: 'Foca', e: '🦭'}, {w: 'Faro', e: '🚨'}, {w: 'Fondo', e: '🌊'}],
+            'A': [{w: 'Almeja', e: '🦪'}, {w: 'Ancla', e: '⚓'}, {w: 'Alga', e: '🌿'}],
+            'E': [{w: 'Estrella', e: '⭐'}, {w: 'Erizo', e: '🦔'}, {w: 'Esponja', e: '🧽'}],
+            'O': [{w: 'Ola', e: '🌊'}, {w: 'Ostra', e: '🦪'}, {w: 'Océano', e: '🌎'}]
         };
 
         let score = 0;
         let round = 1;
-        let currentTarget = null;
+        let isWaiting = false;
         const totalRounds = 10;
+        const keys = Object.keys(dictionary);
 
-        const synth = window.speechSynthesis;
-
-        function speak(text) {
-            if (synth.speaking) synth.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            
-            // Intentar encontrar una voz latinoamericana
-            const voices = synth.getVoices();
-            const latamVoice = voices.find(v => 
-                v.lang === 'es-MX' || v.lang === 'es-US' || v.lang === 'es-AR' || v.lang.includes('es-419')
-            );
-            
-            if (latamVoice) {
-                utterance.voice = latamVoice;
-            } else {
-                utterance.lang = 'es-ES';
+        function createBubbles() {
+            const container = document.getElementById('bubbles-container');
+            for(let i=0; i<15; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                const size = Math.random() * 40 + 10 + 'px';
+                bubble.style.width = size;
+                bubble.style.height = size;
+                bubble.style.left = Math.random() * 100 + 'vw';
+                bubble.style.animationDelay = Math.random() * 4 + 's';
+                container.appendChild(bubble);
             }
-            
-            utterance.rate = 0.85; // Un poco más lento para claridad fonoaudiológica
-            utterance.pitch = 1.1; // Un tono ligeramente más amigable para niños
-            synth.speak(utterance);
         }
 
-        function speakInstruction() {
-            if (!currentTarget) return;
-            // Énfasis en el fonema inicial
-            speak(`Busca el dibujo que empieza con el sonido... ${currentTarget.f}... ${currentTarget.f}... como en la palabra... ${currentTarget.w}`);
+        function initProgressDots() {
+            const container = document.getElementById('progress-dots');
+            for(let i=0; i<totalRounds; i++) {
+                const dot = document.createElement('div');
+                dot.className = `h-3 w-3 rounded-full bg-blue-100 transition-all duration-500 dot-${i+1}`;
+                container.appendChild(dot);
+            }
         }
 
         function generateRound() {
@@ -174,84 +167,90 @@
                 return;
             }
 
+            isWaiting = false;
             document.getElementById('round-count').innerText = round;
-            document.getElementById('progress-bar').style.width = `${(round-1) * 10}%`;
+            document.getElementById('feedback-panel').classList.add('opacity-0');
+            updateDots();
 
-            currentTarget = library[Math.floor(Math.random() * library.length)];
-            document.getElementById('target-phoneme').innerText = currentTarget.f;
+            const mainKey = keys[Math.floor(Math.random() * keys.length)];
+            const mainGroup = [...dictionary[mainKey]].sort(() => 0.5 - Math.random()).slice(0, 2);
 
-            let distractors = library
-                .filter(item => item.f !== currentTarget.f)
-                .sort(() => 0.5 - Math.random())
-                .slice(0, 5);
+            const otherKeys = keys.filter(k => k !== mainKey);
+            const intruderKey = otherKeys[Math.floor(Math.random() * otherKeys.length)];
+            const intruderData = dictionary[intruderKey][Math.floor(Math.random() * dictionary[intruderKey].length)];
 
-            let options = [currentTarget, ...distractors].sort(() => 0.5 - Math.random());
+            const options = [
+                { ...mainGroup[0], isIntruder: false, key: mainKey },
+                { ...mainGroup[1], isIntruder: false, key: mainKey },
+                { ...intruderData, isIntruder: true, key: intruderKey }
+            ].sort(() => 0.5 - Math.random());
 
-            const grid = document.getElementById('options-grid');
-            grid.innerHTML = '';
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
 
             options.forEach(opt => {
-                const btn = document.createElement('div');
-                btn.className = 'card-item bg-white border-2 border-gray-100 rounded-2xl p-6 flex flex-col items-center justify-center text-5xl shadow-sm';
-                btn.innerHTML = `<span>${emojiMap[opt.w] || opt.e}</span>`;
-                btn.onclick = () => handleChoice(opt, btn);
-                grid.appendChild(btn);
+                const card = document.createElement('div');
+                card.className = 'card-item bg-white border-blue-50 rounded-[32px] p-6 flex flex-col items-center justify-center shadow-xl';
+                card.innerHTML = `
+                    <span class="text-6xl mb-4">${opt.e}</span>
+                    <span class="text-xl font-bold text-blue-600 uppercase tracking-widest">${opt.w}</span>
+                `;
+                card.onclick = () => handleChoice(opt, card, mainKey);
+                container.appendChild(card);
             });
-
-            setTimeout(speakInstruction, 500);
         }
 
-        function handleChoice(choice, element) {
-            if (choice.f === currentTarget.f) {
+        function updateDots() {
+            const dots = document.querySelectorAll('#progress-dots div');
+            dots.forEach((dot, idx) => {
+                if (idx < round - 1) dot.className = 'h-3 w-8 rounded-full bg-blue-400 transition-all';
+                else if (idx === round - 1) dot.className = 'h-3 w-8 rounded-full bg-blue-200 animate-pulse';
+            });
+        }
+
+        function handleChoice(opt, element, groupKey) {
+            if (isWaiting) return;
+
+            const panel = document.getElementById('feedback-panel');
+            const title = document.getElementById('feedback-title');
+            const text = document.getElementById('feedback-text');
+
+            panel.classList.remove('opacity-0');
+
+            if (opt.isIntruder) {
+                isWaiting = true;
                 score++;
                 document.getElementById('score-count').innerText = score;
-                element.classList.remove('border-gray-100');
-                element.classList.add('border-green-500', 'bg-green-50');
-                document.body.classList.add('success-flash');
-                speak("¡Excelente trabajo!");
+                element.classList.add('border-green-400', 'bg-green-50', 'success-animation');
                 
+                title.innerText = "¡SÍ! LO ENCONTRASTE 🐙";
+                title.className = "text-2xl font-black text-green-600 mb-1";
+                text.innerText = `"${opt.w}" es el intruso porque empieza con /${opt.key}/. Los otros empiezan con /${groupKey}/.`;
+
                 setTimeout(() => {
-                    document.body.classList.remove('success-flash');
                     round++;
                     generateRound();
-                }, 1500);
+                }, 3000);
             } else {
-                element.classList.add('border-red-500', 'bg-red-50', 'error-shake');
-                speak("Ese empieza con otro sonido, ¡intenta de nuevo!");
+                element.classList.add('border-red-400', 'shake');
+                title.innerText = "¡ESTE NO ES! 🌊";
+                title.className = "text-2xl font-black text-red-500 mb-1";
+                text.innerText = `"${opt.w}" empieza con /${groupKey}/ igual que su amigo marino. ¡Busca al diferente!`;
+                
                 setTimeout(() => {
-                    element.classList.remove('error-shake', 'border-red-500', 'bg-red-50');
+                    element.classList.remove('shake', 'border-red-400');
                 }, 800);
             }
         }
 
         function showResults() {
-            const modal = document.getElementById('result-modal');
-            const msg = document.getElementById('final-message');
-            const medal = document.getElementById('final-medal');
-            
-            modal.style.display = 'flex';
-            msg.innerText = `Has conseguido ${score} de ${totalRounds} aciertos.`;
-            
-            if (score >= 9) {
-                medal.innerText = '🏆';
-                speak("¡Increíble! Eres un experto en sonidos.");
-            } else if (score >= 7) {
-                medal.innerText = '🥇';
-                speak("¡Muy bien hecho! Lo lograste.");
-            } else {
-                medal.innerText = '🥈';
-                speak("¡Buen esfuerzo! Sigue practicando.");
-            }
+            document.getElementById('result-modal').style.display = 'flex';
+            document.getElementById('final-message').innerText = `¡Burbujeante! Has encontrado ${score} de ${totalRounds} intrusos marinos.`;
         }
 
-        document.getElementById('btn-repeat').onclick = speakInstruction;
-
-        // Necesario para cargar las voces en algunos navegadores
-        window.speechSynthesis.onvoiceschanged = () => {};
-
-        window.onload = () => {
-            generateRound();
-        };
+        createBubbles();
+        initProgressDots();
+        generateRound();
     </script>
 </body>
 </html>
