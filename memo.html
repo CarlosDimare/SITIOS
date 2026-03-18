@@ -28,6 +28,7 @@
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             border-radius: 0.75rem;
@@ -40,18 +41,11 @@
         .card-back {
             background-color: #f0f9ff; /* Azul muy claro */
             transform: rotateY(180deg);
+            color: #1e40af;
         }
         .matched {
-            opacity: 0.7;
+            opacity: 0.6;
             cursor: default;
-        }
-        @keyframes celebrate {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-        .winner-anim {
-            animation: celebrate 0.5s ease infinite;
         }
     </style>
 </head>
@@ -60,7 +54,7 @@
     <!-- Encabezado y Estadísticas -->
     <div class="text-center mb-8">
         <h1 class="text-4xl font-bold mb-2 drop-shadow-lg">Memotest Marino 🌊</h1>
-        <p class="text-cyan-100">Encuentra todas las parejas de animales</p>
+        <p class="text-cyan-100">Encuentra las parejas y aprende sus nombres</p>
     </div>
 
     <div class="flex gap-8 mb-6 bg-white/20 backdrop-blur-md p-4 rounded-2xl shadow-xl">
@@ -88,8 +82,8 @@
     <div id="victory-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white text-blue-900 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
             <div class="text-6xl mb-4">🏆</div>
-            <h2 class="text-3xl font-bold mb-2">¡Increíble!</h2>
-            <p class="mb-6">Completaste el Memotest Marino en <span id="final-moves" class="font-bold">0</span> movimientos.</p>
+            <h2 class="text-3xl font-bold mb-2">¡Completado!</h2>
+            <p class="mb-6">Lograste encontrar todos en <span id="final-moves" class="font-bold">0</span> movimientos.</p>
             <button onclick="resetGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">
                 Jugar de nuevo
             </button>
@@ -97,17 +91,16 @@
     </div>
 
     <script>
-        // Configuración de los animales (usando Emojis para simplicidad y compatibilidad total, 
-        // pero estilizados como iconos grandes)
+        // Lista original de 8 animales
         const animals = [
-            { icon: '🐙', name: 'Pulpo' },
-            { icon: '🐋', name: 'Ballena' },
-            { icon: '🦀', name: 'Cangrejo' },
-            { icon: '🐢', name: 'Tortuga' },
-            { icon: '🐬', name: 'Delfín' },
-            { icon: '🦈', name: 'Tiburón' },
-            { icon: '🐠', name: 'Pez Tropical' },
-            { icon: '🦐', name: 'Camarón' }
+            { icon: '🐙', name: 'PULPO' },
+            { icon: '🐋', name: 'BALLENA' },
+            { icon: '🦀', name: 'CANGREJO' },
+            { icon: '🐢', name: 'TORTUGA' },
+            { icon: '🐬', name: 'DELFÍN' },
+            { icon: '🦈', name: 'TIBURÓN' },
+            { icon: '🐠', name: 'PEZ' },
+            { icon: '🦐', name: 'CAMARÓN' }
         ];
 
         let cards = [];
@@ -122,11 +115,10 @@
         const resetBtn = document.getElementById('reset-btn');
         const modal = document.getElementById('victory-modal');
 
-        // Inicializar juego
         function initGame() {
-            // Duplicar los animales para crear parejas
+            // Crear parejas
             const deck = [...animals, ...animals];
-            // Barajar
+            // Barajar aleatoriamente
             deck.sort(() => Math.random() - 0.5);
             
             board.innerHTML = '';
@@ -141,11 +133,14 @@
 
             deck.forEach((animal, index) => {
                 const card = document.createElement('div');
-                card.className = 'perspective h-full w-full';
+                card.className = 'perspective w-full h-full';
                 card.innerHTML = `
-                    <div class="card-inner w-full h-full" data-index="${index}" data-name="${animal.name}">
-                        <div class="card-front text-2xl md:text-3xl font-bold">?</div>
-                        <div class="card-back text-4xl md:text-5xl">${animal.icon}</div>
+                    <div class="card-inner w-full h-full" data-name="${animal.name}">
+                        <div class="card-front text-3xl font-bold">?</div>
+                        <div class="card-back p-2">
+                            <span class="text-4xl md:text-5xl mb-1">${animal.icon}</span>
+                            <span class="text-[10px] md:text-xs font-bold uppercase tracking-tighter">${animal.name}</span>
+                        </div>
                     </div>
                 `;
                 
@@ -156,9 +151,6 @@
         }
 
         function flipCard(cardElement) {
-            const inner = cardElement.querySelector('.card-inner');
-            
-            // Validaciones: no voltear si ya está volteada, si hay dos en proceso, o si ya es match
             if (!canFlip || cardElement.classList.contains('card-flipped') || cardElement.classList.contains('matched')) {
                 return;
             }
@@ -181,7 +173,7 @@
             canFlip = false;
 
             if (name1 === name2) {
-                // Es pareja
+                // Hay coincidencia
                 setTimeout(() => {
                     card1.classList.add('matched');
                     card2.classList.add('matched');
@@ -195,7 +187,7 @@
                     }
                 }, 500);
             } else {
-                // No es pareja
+                // No coinciden, voltear de nuevo
                 setTimeout(() => {
                     card1.classList.remove('card-flipped');
                     card2.classList.remove('card-flipped');
@@ -223,7 +215,7 @@
 
         resetBtn.addEventListener('click', resetGame);
 
-        // Iniciar al cargar
+        // Iniciar juego al cargar la ventana
         window.onload = initGame;
     </script>
 </body>
