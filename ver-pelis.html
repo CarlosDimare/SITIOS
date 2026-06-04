@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Haz ver pelis</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:system-ui,-apple-system,sans-serif}
+header{position:sticky;top:0;z-index:50;background:#0a0a0fcc;backdrop-filter:blur(12px);border-bottom:1px solid #1a1a2e;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font-size:20px;font-weight:700;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+input{flex:1;min-width:180px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:8px;padding:10px 14px;color:#e0e0e0;font-size:14px;outline:none;transition:border-color .2s}
+input:focus{border-color:#f59e0b}
+.categories{display:flex;gap:6px;flex-wrap:wrap}
+.cat{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;transition:all .2s;color:#aaa}
+.cat:hover,.cat.active{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:16px 20px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
+.card{background:#12121e;border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid #1a1a2e}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 24px #00000066;border-color:#f59e0b44}
+.card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
+.card .info{padding:10px}
+.card h3{font-size:13px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .year{font-size:11px;color:#666}
+.card .quality{font-size:10px;color:#f59e0b;margin-top:2px}
+.modal-overlay{position:fixed;inset:0;z-index:100;background:#000000cc;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#0a0a0f;border-radius:12px;width:100%;max-width:900px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;border:1px solid #2a2a3e}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #1a1a2e}
+.modal-header h2{font-size:16px;font-weight:600}
+.btn-close{background:none;border:none;color:#666;font-size:22px;cursor:pointer;padding:4px 8px;border-radius:6px}
+.btn-close:hover{background:#1a1a2e;color:#e0e0e0}
+.providers{display:flex;gap:6px;padding:10px 18px;flex-wrap:wrap;border-bottom:1px solid #1a1a2e}
+.providers button{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;color:#aaa;transition:all .2s}
+.providers button:hover,.providers button.active{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
+.player-wrap{flex:1;min-height:60vh;background:#000;position:relative}
+.player-wrap iframe{width:100%;height:100%;position:absolute;inset:0;border:none}
+.loading{text-align:center;padding:60px 20px;color:#555;font-size:14px}
+.spinner{width:32px;height:32px;border:3px solid #1a1a2e;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error{text-align:center;padding:40px 20px;color:#ef4444;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>▶ haz ver</h1>
+  <input id="search" type="text" placeholder="Buscar película o serie...">
+  <div class="categories" id="categories"></div>
+</header>
+<div class="grid" id="grid"></div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Cargando...</h2>
+      <button class="btn-close" id="btn-close">&times;</button>
+    </div>
+    <div class="providers" id="providers"></div>
+    <div class="player-wrap" id="player-wrap"><div class="loading" id="player-loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+<script>
+// ─── Providers ──────────────────────────────────────────────
+const PROVIDERS = [
+  { id: 'vidsrc', name: 'VidSrc', movie: id => `https://vidsrc.mov/embed/movie/${id}`, tv: (id,s,e) => `https://vidsrc.mov/embed/tv/${id}/${s}/${e}` },
+  { id: 'vidlink', name: 'VidLink', movie: id => `https://vidlink.pro/movie/${id}`, tv: (id,s,e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
+  { id: 'multiembed', name: 'MultiEmbed', movie: id => `https://multiembed.mov/?video_id=${id}&tmdb=1`, tv: (id,s,e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}` },
+  { id: 'vidfast', name: 'VidFast', movie: id => `https://vidfast.pro/movie/${id}`, tv: (id,s,e) => `https://vidfast.pro/tv/${id}/${s}/${e}` },
+  { id: 'ezvidapi', name: 'EZVidAPI', movie: id => `https://ezvidapi.com/embed/movie/${id}`, tv: (id,s,e) => `https://ezvidapi.com/embed/tv/${id}/${s}/${e}` },
+  { id: 'embed-api', name: 'EmbedAPI', movie: id => `https://player.embed-api.stream/?id=${id}`, tv: (id,s,e) => `https://player.embed-api.stream/?id=${id}&s=${s}&e=${e}` },
+  { id: 'videasy', name: 'Videasy', movie: id => `https://player.videasy.net/movie/${id}`, tv: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}` },
+  { id: 'autoembed', name: 'AutoEmbed', movie: id => `https://player.autoembed.cc/embed/movie/${id}`, tv: (id,s,e) => `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}` },
+]
+
+// ─── State ──────────────────────────────────────────────────
+let allMovies = []
+let currentId = null
+let currentType = 'movie'
+let currentProvider = PROVIDERS[0]
+
+// ─── DOM refs ───────────────────────────────────────────────
+const $ = s => document.querySelector(s)
+const grid = $('#grid')
+const search = $('#search')
+const modal = $('#modal')
+const modalTitle = $('#modal-title')
+const providersEl = $('#providers')
+const playerWrap = $('#player-wrap')
+const btnClose = $('#btn-close')
+const categories = $('#categories')
+
+// ─── TMDb API (pública, no requiere key para reads limitados) ─
+// Usamos el listing de vidsrc.mov que es público y no necesita key
+async function fetchMovies(page = 1) {
+  const url = `https://vidsrc.mov/vapi/movie/new/${page}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Error al cargar')
+  const data = await res.json()
+  return data.result || []
+}
+
+async function searchMovies(query, page = 1) {
+  // TMDb search público vía vidsrc — usamos su search endpoint
+  try {
+    const url = `https://vidsrc.mov/vapi/movie/search/${encodeURIComponent(query)}/${page}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('search fail')
+    const data = await res.json()
+    return data.result || []
+  } catch {
+    // fallback: filtrar local
+    return allMovies.filter(m =>
+      (m.title || m.original_title || '').toLowerCase().includes(query.toLowerCase())
+    )
+  }
+}
+
+// ─── Render ─────────────────────────────────────────────────
+function renderMovies(movies) {
+  grid.innerHTML = movies.length
+    ? movies.map(m => {
+        const title = m.title || m.original_title || 'Sin título'
+        const year = (m.release_date || '').slice(0,4) || ''
+        const img = m.poster_path
+          ? `https://image.tmdb.org/t/p/w185${m.poster_path}`
+          : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 185 278"><rect fill="%231a1a2e" width="185" height="278"/><text x="50%" y="50%" fill="%23444" font-size="40" text-anchor="middle" dy=".35em">🎬</text></svg>'
+        const id = m.tmdb_id || m.id
+        return `<div class="card" data-id="${id}" data-type="movie" onclick="openPlayer('${id}','movie')">
+          <img src="${img}" loading="lazy" alt="${title}">
+          <div class="info">
+            <h3>${title}</h3>
+            <div><span class="year">${year}</span> <span class="quality">HD</span></div>
+          </div>
+        </div>`
+      }).join('')
+    : '<div class="error">Sin resultados 😕</div>'
+}
+
+async function loadMovies(page = 1) {
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div>Cargando estrenos...</div>'
+  try {
+    allMovies = await fetchMovies(page)
+    renderMovies(allMovies)
+  } catch (e) {
+    grid.innerHTML = '<div class="error">Error al cargar. Probá recargar.</div>'
+  }
+}
+
+// ─── Player ─────────────────────────────────────────────────
+window.openPlayer = function(id, type = 'movie', season, episode) {
+  currentId = id
+  currentType = type
+  modal.classList.add('open')
+  modalTitle.textContent = 'Cargando...'
+
+  // Render provider buttons
+  providersEl.innerHTML = PROVIDERS.map(p =>
+    `<button class="${p.id === currentProvider.id ? 'active' : ''}" onclick="switchProvider('${p.id}')">${p.name}</button>`
+  ).join('')
+
+  loadStream(id, type, season, episode)
+}
+
+function switchProvider(providerId) {
+  currentProvider = PROVIDERS.find(p => p.id === providerId) || PROVIDERS[0]
+  providersEl.querySelectorAll('button').forEach(b => b.classList.remove('active'))
+  providersEl.querySelector(`[onclick*="${providerId}"]`)?.classList.add('active')
+  loadStream(currentId, currentType)
+}
+
+function loadStream(id, type, season, episode) {
+  playerWrap.innerHTML = '<div class="loading" id="player-loading"><div class="spinner"></div>Cargando reproductor...</div>'
+  const url = type === 'movie'
+    ? currentProvider.movie(id)
+    : currentProvider.tv(id, season || 1, episode || 1)
+  iframe = document.createElement('iframe')
+  iframe.src = url
+  iframe.allow = 'autoplay; fullscreen; picture-in-picture'
+  iframe.allowFullscreen = true
+  iframe.onload = () => { playerWrap.innerHTML = ''; playerWrap.appendChild(iframe) }
+  iframe.onerror = () => { playerWrap.innerHTML = '<div class="error">Error al cargar el reproductor. Probá otro provider.</div>' }
+  // Force fallback if iframe doesn't load in 15s
+  setTimeout(() => { if (!iframe.parentNode) { playerWrap.innerHTML = ''; playerWrap.appendChild(iframe) } }, 15000)
+}
+
+// ─── Search + Categories ────────────────────────────────────
+let searchTimer
+search.addEventListener('input', () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    const q = search.value.trim()
+    if (!q) { renderMovies(allMovies); return }
+    grid.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando...</div>'
+    try {
+      const results = await searchMovies(q)
+      renderMovies(results)
+    } catch {
+      renderMovies(allMovies.filter(m => (m.title||'').toLowerCase().includes(q.toLowerCase())))
+    }
+  }, 400)
+})
+
+// ─── Close modal ────────────────────────────────────────────
+btnClose.addEventListener('click', () => modal.classList.remove('open'))
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open') })
+document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('open') })
+
+// ─── Init ───────────────────────────────────────────────────
+loadMovies()
+</script>
+</body>
+</html>
