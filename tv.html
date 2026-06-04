@@ -160,17 +160,10 @@
    - Las URLs de GitHub / streams públicos se actualizan regularmente
    ========================================================================== */
 const STREAM_URLS = [
-  // Stream oficial de la App TV Abierta Digital Argentina (gobierno)
-  // Fuente: app oficial "TV Abierta Digital Argentina" (Play Store)
-  // Requiere estar en Argentina para funcionar
-  "https://streaming.eltrece.com.ar/hls/eltrece.m3u8",
-  // Telecentro (ISP argentino) — funciona SOLO desde redes Telecentro
-  "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD.m3u8",
-  // Variantes de calidad (SD / backup)
-  "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD_1200k.m3u8",
-  "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD_800k.m3u8",
-  // Alternativa Telecentro sin HD
-  "https://stream-gtlc.telecentro.net.ar/hls/canal13/canal13.m3u8",
+  // Artear / Grupo Clarín CDN oficial (vodgc.net)
+  // Fuente: iptv-org, verificado funcionando desde multiples ubicaciones
+  // Calidad: 1080p, 720p, 576p, 360p con conmutación adaptativa
+  "https://livetrx01.vodgc.net/eltrecetv/index.m3u8",
 ];
 
 /* ==========================================================================
@@ -280,6 +273,7 @@ function loadStream(url) {
       fragLoadingRetryDelay: 1000,
       xhrSetup: function(xhr) {
         xhr.withCredentials = false;
+        xhr.setRequestHeader('Referer', 'https://vodgc.net');
       }
     });
 
