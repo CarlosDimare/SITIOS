@@ -14,7 +14,6 @@
 
   .app{display:flex;flex-direction:column;height:100vh}
 
-  /* ── HEADER ────────────────────────────────────── */
   header{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:10}
   header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 5%,var(--accent) 50%,transparent 95%);opacity:.35}
 
@@ -36,21 +35,17 @@
   .status-dot.err{background:var(--accent2)}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
-  /* ── VIDEO ─────────────────────────────────────── */
   .video-container{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden;min-height:0}
-
-  video{width:100%;height:100%;object-fit:contain;display:none;background:#000}
+  video{width:100%;height:100%;object-fit:contain;display:block;background:#000}
 
   .watermark{position:absolute;bottom:12px;right:16px;opacity:.06;pointer-events:none;z-index:2;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:#fff}
 
-  /* Buffering */
   .buf-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:5;pointer-events:none}
   .buf-overlay.show{display:flex}
   .spinner-ring{width:48px;height:48px;border:3px solid rgba(255,255,255,.08);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
   .buf-text{position:absolute;margin-top:64px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
 
-  /* Error state */
   .error-state{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:4;background:var(--bg)}
   .error-state.show{display:flex}
   .error-icon{width:64px;height:64px;border:2px solid var(--accent2);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:.7}
@@ -59,13 +54,11 @@
   .retry-btn{margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 20px;border-radius:6px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase}
   .retry-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(200,168,78,.06)}
 
-  /* Toast */
   .toast{position:absolute;top:16px;left:50%;transform:translateX(-50%) translateY(-10px);background:rgba(10,10,18,.92);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.5px;padding:8px 18px;border-radius:6px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:20;backdrop-filter:blur(12px)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .toast.err{border-color:var(--accent2);color:var(--accent2)}
   .toast.ok{border-color:#2ecc71;color:#2ecc71}
 
-  /* ── CONTROLS BAR ──────────────────────────────── */
   .controls-bar{background:var(--surface);border-top:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 
   .play-btn{background:var(--accent);border:none;color:var(--bg);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s}
@@ -87,7 +80,6 @@
 
   .time-display{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.5px}
 
-  /* ── RESPONSIVE ────────────────────────────────── */
   @media(max-width:600px){
     header{padding:8px 12px;gap:10px}
     .ch-logo,.ch-logo-fallback{height:26px;width:26px}
@@ -159,29 +151,36 @@
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════════════════════════════════════
-   STREAMS DE CANAL 13 — URLs verificadas, sin geobloqueo, sin token
-   Todas son variantes del mismo origen de Telecentro que sirve abierto
-   ═══════════════════════════════════════════════════════════════════════════════ */
+/* ==========================================================================
+   STREAMS DE CANAL 13
+   ==========================================================================
+   Fuentes públicas verificadas.
+   - Pluto TV: requiere API key, no incluida aquí
+   - Telecentro: solo funciona desde redes Telecentro Argentina
+   - Las URLs de GitHub / streams públicos se actualizan regularmente
+   ========================================================================== */
 const STREAM_URLS = [
-  // Stream HD principal de Telecentro para Canal 13
+  // Stream oficial de la App TV Abierta Digital Argentina (gobierno)
+  // Fuente: app oficial "TV Abierta Digital Argentina" (Play Store)
+  // Requiere estar en Argentina para funcionar
+  "https://streaming.eltrece.com.ar/hls/eltrece.m3u8",
+  // Telecentro (ISP argentino) — funciona SOLO desde redes Telecentro
   "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD.m3u8",
   // Variantes de calidad (SD / backup)
-  "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD_800k.m3u8",
   "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD_1200k.m3u8",
-  // Stream alternativo sin sufijo HD
+  "https://stream-gtlc.telecentro.net.ar/hls/canal13HD/canal13HD_800k.m3u8",
+  // Alternativa Telecentro sin HD
   "https://stream-gtlc.telecentro.net.ar/hls/canal13/canal13.m3u8",
 ];
 
-/* ═══════════════════════════════════════════════════════════════════════════════
-   REFERENCIAS
-   ═══════════════════════════════════════════════════════════════════════════════ */
+/* ==========================================================================
+   REFERENCIAS DOM
+   ========================================================================== */
 const videoEl    = document.getElementById('video');
 const bufOverlay = document.getElementById('bufOverlay');
 const errorState = document.getElementById('errorState');
 const statusDot  = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
-const playBtn    = document.getElementById('playBtn');
 const iconPlay   = document.getElementById('iconPlay');
 const iconPause  = document.getElementById('iconPause');
 const volOn      = document.getElementById('volOn');
@@ -197,9 +196,9 @@ let isMuted = false;
 let prevVol = 1;
 let safetyTimer = null;
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ==========================================================================
    UTILIDADES
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ========================================================================== */
 function fmtTime(s) {
   if (!isFinite(s) || s < 0) return 'LIVE';
   const m = Math.floor(s / 60);
@@ -223,13 +222,13 @@ function setStatus(s, t) {
 
 function setPlayIcon(playing) {
   isPlaying = playing;
-  iconPlay.style.display  = playing ? '' : 'none';
-  iconPause.style.display = playing ? 'none' : '';
+  iconPlay.style.display  = playing ? 'none' : '';
+  iconPause.style.display = playing ? '' : 'none';
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════════
-   MOTOR DE STREAMING — Intenta cada URL hasta que una funcione
-   ═══════════════════════════════════════════════════════════════════════════════ */
+/* ==========================================================================
+   MOTOR DE STREAMING
+   ========================================================================== */
 function destroyHls() {
   if (hls) { hls.destroy(); hls = null; }
 }
@@ -259,7 +258,7 @@ function loadStream(url) {
   destroyHls();
   errorState.classList.remove('show');
   bufOverlay.classList.add('show');
-  videoEl.style.display = '';
+  videoEl.style.display = 'block';
   setStatus('loading', 'Conectando');
 
   const isHlsUrl = url.includes('.m3u8');
@@ -269,9 +268,7 @@ function loadStream(url) {
       enableWorker: true,
       lowLatencyMode: false,
       maxBufferLength: 30,
-      maxMaxBufferLength: 120,
       startFragPrefetch: true,
-      // Timeouts generosos para conexiones lentas
       manifestLoadingTimeOut: 20000,
       manifestLoadingMaxRetry: 3,
       manifestLoadingRetryDelay: 1500,
@@ -281,7 +278,6 @@ function loadStream(url) {
       fragLoadingTimeOut: 20000,
       fragLoadingMaxRetry: 5,
       fragLoadingRetryDelay: 1000,
-      // Sin credenciales para evitar bloqueos
       xhrSetup: function(xhr) {
         xhr.withCredentials = false;
       }
@@ -291,10 +287,9 @@ function loadStream(url) {
     hls.attachMedia(videoEl);
 
     hls.on(Hls.Events.MANIFEST_PARSED, function() {
-      console.log('Manifesto parseado OK, reproduciendo...');
+      console.log('Manifiesto parseado OK');
       videoEl.play().catch(function() {
-        // Autoplay bloqueado — esperar interacción
-        toast('Hacé clic en play para comenzar', 'ok', 4000);
+        toast('Presioná play para comenzar', 'ok', 4000);
         setPlayIcon(false);
         bufOverlay.classList.remove('show');
         setStatus('ok', 'Listo');
@@ -302,7 +297,6 @@ function loadStream(url) {
     });
 
     hls.on(Hls.Events.FRAG_LOADED, function() {
-      // Primer fragmento cargado — la señal está llegando
       bufOverlay.classList.remove('show');
       setStatus('ok', 'Señal OK');
       clearTimeout(safetyTimer);
@@ -311,42 +305,29 @@ function loadStream(url) {
     hls.on(Hls.Events.LEVEL_SWITCHED, function(e, data) {
       var lvl = hls.levels[data.level];
       if (lvl) {
-        console.log('Nivel de calidad:', lvl.height + 'p', lvl.bitrate ? Math.round(lvl.bitrate/1000) + 'kbps' : '');
+        console.log('Calidad:', lvl.height + 'p', lvl.bitrate ? Math.round(lvl.bitrate/1000) + 'kbps' : '');
       }
     });
 
     var mediaRetryCount = 0;
     hls.on(Hls.Events.ERROR, function(e, data) {
       console.warn('HLS Error:', data.type, data.details, data.fatal ? '(FATAL)' : '');
-
       if (data.fatal) {
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          // Error de medios — intentar recuperar
-          if (mediaRetryCount < 3) {
-            mediaRetryCount++;
-            console.log('Recuperando error de medios (intento ' + mediaRetryCount + ')');
-            hls.recoverMediaError();
-          } else {
-            console.log('No se pudo recuperar error de medios, probando otra URL');
-            tryNextUrl();
-          }
-        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          console.log('Error de red, probando otra URL');
-          tryNextUrl();
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetryCount < 3) {
+          mediaRetryCount++;
+          hls.recoverMediaError();
         } else {
-          console.log('Error fatal irrecuperable, probando otra URL');
           tryNextUrl();
         }
       }
     });
 
   } else if (isHlsUrl && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari — HLS nativo
     videoEl.src = url;
     videoEl.addEventListener('loadedmetadata', function onMeta() {
       videoEl.removeEventListener('loadedmetadata', onMeta);
       videoEl.play().catch(function() {
-        toast('Hacé clic en play para comenzar', 'ok', 4000);
+        toast('Presioná play para comenzar', 'ok', 4000);
         setPlayIcon(false);
         bufOverlay.classList.remove('show');
         setStatus('ok', 'Listo');
@@ -357,7 +338,6 @@ function loadStream(url) {
       tryNextUrl();
     });
   } else {
-    // No es HLS — probar directo
     videoEl.src = url;
     videoEl.addEventListener('loadeddata', function onLoaded() {
       videoEl.removeEventListener('loadeddata', onLoaded);
@@ -372,28 +352,24 @@ function loadStream(url) {
     });
   }
 
-  // Timeout de seguridad: si en 18 segundos no hay video, probar siguiente URL
   clearTimeout(safetyTimer);
   safetyTimer = setTimeout(function() {
     if (bufOverlay.classList.contains('show')) {
-      console.log('Timeout de seguridad — probando siguiente URL');
+      console.log('Timeout — probando siguiente URL');
       tryNextUrl();
     }
   }, 18000);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════════
-   INICIO
-   ═══════════════════════════════════════════════════════════════════════════════ */
 function initStream() {
   currentUrlIdx = 0;
   errorState.classList.remove('show');
   loadStream(STREAM_URLS[0]);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ==========================================================================
    EVENTOS DEL VIDEO
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ========================================================================== */
 videoEl.addEventListener('play', function() {
   setPlayIcon(true);
   bufOverlay.classList.remove('show');
@@ -421,16 +397,75 @@ videoEl.addEventListener('timeupdate', function() {
   if (isFinite(videoEl.duration) && videoEl.duration > 0) {
     timeDisp.textContent = fmtTime(videoEl.currentTime) + ' / ' + fmtTime(videoEl.duration);
   } else {
-    // Stream en vivo — mostrar tiempo transcurrido
     timeDisp.textContent = fmtTime(videoEl.currentTime) + ' · LIVE';
   }
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ==========================================================================
    CONTROLES
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ========================================================================== */
 function togglePlay() {
   if (videoEl.paused) {
-    // Si nunca se cargó nada, iniciar
     if (!hls && !videoEl.src) {
-      
+      initStream();
+      return;
+    }
+    videoEl.play().catch(function(e) {
+      console.warn('No se pudo reproducir:', e);
+    });
+  } else {
+    videoEl.pause();
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  if (isMuted) {
+    prevVol = videoEl.volume;
+    videoEl.volume = 0;
+    volOn.style.display = 'none';
+    volOff.style.display = '';
+    document.getElementById('volSlider').value = 0;
+  } else {
+    videoEl.volume = prevVol;
+    volOn.style.display = '';
+    volOff.style.display = 'none';
+    document.getElementById('volSlider').value = prevVol;
+  }
+}
+
+function setVol(val) {
+  var v = parseFloat(val);
+  videoEl.volume = v;
+  if (v === 0) {
+    volOn.style.display = 'none';
+    volOff.style.display = '';
+    isMuted = true;
+  } else {
+    volOn.style.display = '';
+    volOff.style.display = 'none';
+    isMuted = false;
+    prevVol = v;
+  }
+}
+
+function goFullscreen() {
+  var c = document.getElementById('videoContainer');
+  if (c.requestFullscreen) {
+    c.requestFullscreen();
+  } else if (c.webkitRequestFullscreen) {
+    c.webkitRequestFullscreen();
+  } else if (c.msRequestFullscreen) {
+    c.msRequestFullscreen();
+  }
+}
+
+/* ==========================================================================
+   ARRANQUE AUTOMÁTICO
+   ========================================================================== */
+document.addEventListener('DOMContentLoaded', function() {
+  initStream();
+});
+</script>
+</body>
+</html>
