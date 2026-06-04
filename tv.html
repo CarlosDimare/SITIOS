@@ -36,6 +36,10 @@
   .status-bar a{color:var(--muted);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;text-decoration:none;transition:color .2s}
   .status-bar a:hover{color:var(--accent)}
 
+  .fs-btn{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+  .fs-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .fs-btn svg{width:14px;height:14px}
+
   @media(max-width:600px){
     header{padding:8px 12px;gap:10px}
     .ch-logo,.ch-logo-fallback{height:26px;width:26px}
@@ -74,8 +78,35 @@
     <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Señal oficial · Artear</span>
     <span style="flex:1"></span>
     <a href="https://www.eltrecetv.com.ar/vivo/" target="_blank" rel="noopener">eltrecetv.com.ar</a>
+    <button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()" aria-label="Pantalla completa" title="Pantalla completa">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 6V2h4M14 10v4h-4M2 10v4h4M14 6V2h-4"/>
+      </svg>
+    </button>
   </div>
 
 </div>
+
+<script>
+function toggleFullscreen() {
+  const el = document.getElementById('videoContainer')
+  if (!document.fullscreenElement) {
+    el.requestFullscreen()
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+document.getElementById('videoContainer').addEventListener('dblclick', toggleFullscreen)
+
+document.addEventListener('fullscreenchange', () => {
+  const fs = document.fullscreenElement
+  const btn = document.getElementById('fsBtn')
+  btn.innerHTML = fs
+    ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
+    : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V2h4M14 10v4h-4M2 10v4h4M14 6V2h-4"/></svg>'
+  btn.title = fs ? 'Salir de pantalla completa' : 'Pantalla completa'
+})
+</script>
 </body>
 </html>
