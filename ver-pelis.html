@@ -65,7 +65,7 @@ const IMG = 'https://image.tmdb.org/t/p/w185'
 const PROVIDERS = [
   {id:'vidsrc',name:'VidSrc',  movie:id=>`https://vidsrc.mov/embed/movie/${id}`, tv:(id,s,e)=>`https://vidsrc.mov/embed/tv/${id}/${s}/${e}`},
   {id:'vidlink',name:'VidLink',movie:id=>`https://vidlink.pro/movie/${id}`,    tv:(id,s,e)=>`https://vidlink.pro/tv/${id}/${s}/${e}`},
-  {id:'multi',  name:'MultiEmb',movie:id=>`https://multiembed.mov/?video_id=${id}&tmdb=1`, tv:(id,s,e)=>`https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`},
+  {id:'stream',name:'StreamNow',movie:id=>`https://streamingnow.mov/movie/${id}`, tv:(id,s,e)=>`https://streamingnow.mov/tv/${id}/${s}/${e}`},
   {id:'vidfast',name:'VidFast',movie:id=>`https://vidfast.pro/movie/${id}`,    tv:(id,s,e)=>`https://vidfast.pro/tv/${id}/${s}/${e}`},
   {id:'videasy',name:'Videasy',movie:id=>`https://player.videasy.net/movie/${id}`, tv:(id,s,e)=>`https://player.videasy.net/tv/${id}/${s}/${e}`},
   {id:'ezvid',  name:'EZVidAPI',movie:id=>`https://ezvidapi.com/embed/movie/${id}`, tv:(id,s,e)=>`https://ezvidapi.com/embed/tv/${id}/${s}/${e}`},
@@ -115,12 +115,13 @@ function sw(id) {
 }
 
 function loadStream(id,type) {
-  $('#pw').innerHTML = '<div class="loading"><div class="spin"></div>Cargando reproductor...</div>'
+  $('#pw').innerHTML = ''
   const url = type==='movie' ? curProv.movie(id) : curProv.tv(id,1,1)
   const ifr = document.createElement('iframe')
-  ifr.src=url; ifr.allow='autoplay;fullscreen;picture-in-picture'; ifr.allowFullscreen=true
-  ifr.onload=()=>{$('#pw').innerHTML='';$('#pw').appendChild(ifr)}
-  ifr.onerror=()=>{$('#pw').innerHTML='<div class="err">Error. Probá otro server.</div>'}
+  ifr.allow='autoplay;fullscreen;picture-in-picture'; ifr.allowFullscreen=true
+  ifr.style.display='block'
+  $('#pw').appendChild(ifr)
+  ifr.src = url
 }
 
 $('#btn-close').onclick=()=>$('#modal').classList.remove('open')
@@ -140,7 +141,7 @@ $('#q').oninput = function() {
     $('#grid').innerHTML='<div class="loading"><div class="spin"></div>Buscando...</div>'
     try {
       const d = await tmdb(`search/multi?query=${encodeURIComponent(v)}&page=1`)
-      const items = (d.results||[]).filter(x=>x.mediaType!=='person'&&x.media_type!=='person').map(x=>({...x,id:x.id}))
+      const items = (d.results||[]).filter(x=>x.media_type!=='person')
       render(items.length?items:d.results||[])
     } catch { loadList(cat) }
   },400)
