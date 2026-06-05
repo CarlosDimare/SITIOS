@@ -28,7 +28,7 @@
   .ch-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:var(--muted);width:100%;text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;transition:all .15s;border-left:3px solid transparent}
   .ch-item:hover{background:rgba(255,255,255,.03);color:var(--text)}
   .ch-item.active{color:var(--text);background:rgba(200,168,78,.06);border-left-color:var(--accent)}
-  .ch-item img{width:28px;height:28px;border-radius:4px;object-fit:contain;flex-shrink:0}
+  .ch-item img{width:28px;height:28px;border-radius:4px;object-fit:contain;flex-shrink:0;background:rgba(255,255,255,.05)}
   .ch-item .ch-label{display:flex;flex-direction:column;gap:1px;min-width:0}
   .ch-item .ch-label .name{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.5px}
   .ch-item .ch-label .freq{font-size:7px;letter-spacing:1px;color:var(--muted)}
@@ -60,10 +60,10 @@
   @keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.6)}50%{box-shadow:0 0 0 5px rgba(231,76,60,0)}}
 
   .video-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden;min-height:0}
-  .video-wrap iframe,.video-wrap video{width:100%;height:100%;border:none;background:#000;object-fit:contain}
-  .video-wrap iframe.hidden,.video-wrap video.hidden{display:none}
+  .video-wrap video{width:100%;height:100%;border:none;background:#000;object-fit:contain}
   .video-wrap .placeholder{color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-align:center}
 
+  .error-msg{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:var(--accent2);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.25);padding:6px 14px;border-radius:6px;display:none;z-index:3;text-align:center;max-width:80%}
   .watermark{position:absolute;bottom:12px;right:16px;opacity:.06;pointer-events:none;z-index:2;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:#fff}
 
   .status-bar{background:var(--surface);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
@@ -96,7 +96,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <span class="logo">TV</span>
-      <span class="logo-sub">Argentina · 3 canales</span>
+      <span class="logo-sub">Solo M3U · HLS Directo</span>
     </div>
 
     <div class="ch-list" id="chList">
@@ -114,9 +114,8 @@
       </button>
     </div>
 
-    <!-- source buttons rendered dynamically -->
     <div class="src-section" id="srcSection">
-      <div class="src-label" id="srcLabel">Fuente</div>
+      <div class="src-label" id="srcLabel">Fuente HLS</div>
       <div class="src-group" id="srcGroup"></div>
     </div>
 
@@ -136,14 +135,15 @@
     </header>
 
     <div class="video-wrap" id="videoWrap">
-      <iframe id="playerEmbed" src="" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="eager" importance="high" title="Player"></iframe>
-      <video id="playerDirect" class="hidden" muted autoplay playsinline preload="auto" title="Directo"></video>
-      <div class="placeholder hidden" id="placeholder">Seleccioná una fuente</div>
+      <video id="player" muted autoplay playsinline preload="auto" title="Directo"></video>
+      <div class="placeholder hidden" id="placeholder">Cargando stream...</div>
+      <div class="error-msg" id="errorMsg"></div>
       <div class="watermark" id="watermark">TV ARG</div>
     </div>
 
     <div class="status-bar">
       <span id="statusSource" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Artear</span>
+      <span id="statusRes" style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-left:8px"></span>
       <span style="flex:1"></span>
       <a id="statusLink" href="https://www.eltrecetv.com.ar/vivo/" target="_blank" rel="noopener">eltrecetv.com.ar</a>
       <button class="fs-btn" id="fsBtn" onclick="toggleFS()" aria-label="Pantalla completa" title="Pantalla completa">
@@ -154,38 +154,34 @@
 </div>
 
 <script>
-/* ─── Channel Config ─── */
+/* ─── Channel Config — Solo M3U / HLS directo ─── */
 const CHANNELS = {
   trece: {
-    name: 'Canal 13', sub: 'El Trece · Buenos Aires · Argentina', slug: 'El Trece',
+    name: 'Canal 13', sub: 'El Trece · Buenos Aires · Argentina', slug: 'EL TRECE',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Canal_13_Argentina_2023.svg/200px-Canal_13_Argentina_2023.svg.png',
     sources: [
-      { id: 'oficial', label: 'Oficial', type: 'embed', url: 'https://api.vodgc.net/player/v2/embed/playerId/PRZ9KU1515679151/contentId/1427089' },
-      { id: 'lhdtv', label: 'LiveHDTV', type: 'embed', url: 'https://www.livehdtv.com/embed/el-trece/' },
-      { id: 'directo', label: 'Directo', type: 'hls', url: 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8', referer: 'https://vodgc.net' }
+      { id: 'cdn1', label: 'CDN #1', url: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', referer: 'https://vodgc.net' },
+      { id: 'cdn2', label: 'CDN #2', url: 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8', referer: 'https://vodgc.net' },
     ],
     link: 'https://www.eltrecetv.com.ar/vivo/',
     sourceLabel: 'Artear'
   },
   telefe: {
-    name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'Telefe',
+    name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'TELEFE',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Telefe_logo_2020.svg/200px-Telefe_logo_2020.svg.png',
     sources: [
-      { id: 'lhdtv', label: 'LiveHDTV', type: 'embed', url: 'https://www.livehdtv.com/embed/ch453/' },
-      { id: 'directo1', label: 'Directo #1', type: 'hls', url: 'https://is-tucuman.cdn.rcs.net.ar/mnp/telefe_hls/playlist.m3u8' },
-      { id: 'directo2', label: 'Directo #2', type: 'hls', url: 'http://test_deportv-lh.akamaihd.net/i/TelefeHD_1@7273/index_1_av-p.m3u8' },
-      { id: 'youtube', label: 'YouTube', type: 'embed', url: 'https://www.youtube.com/embed/rYlbpTfQ5PI?autoplay=1' }
+      { id: 'pluto', label: 'Pluto TV (Intl)', url: 'https://siloh-mcdn.plutotv.net/lilo/production/TelefePluto/master.m3u8' },
+      { id: 'yt', label: 'YouTube Relay', url: 'https://ythls.armelin.one/channel/UC3OQ66wEJaOPHK25IBdWR_g.m3u8' },
     ],
     link: 'https://mitelefe.com/',
     sourceLabel: 'Paramount Global'
   },
   america: {
-    name: 'América TV', sub: 'Canal 2 · Buenos Aires · Argentina', slug: 'América TV',
+    name: 'América TV', sub: 'Canal 2 · Buenos Aires · Argentina', slug: 'AMÉRICA TV',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Am%C3%A9rica_TV_logo_2018.svg/200px-Am%C3%A9rica_TV_logo_2018.svg.png',
     sources: [
-      { id: 'oficial', label: 'Oficial', type: 'embed', url: 'https://vmf.edge-apps.net/embed/live.php?streamname=americahls-100056&autoplay=true' },
-      { id: 'lhdtv', label: 'LiveHDTV', type: 'embed', url: 'https://www.livehdtv.com/embed/america-tv-argentina/' },
-      { id: 'directo', label: 'Directo', type: 'hls', url: 'https://prepublish.f.qaotic.net/a07/americahls-100056/playlist_720p.m3u8', userAgent: 'Mozilla/5.0' }
+      { id: 'qaotic', label: 'Qaotic', url: 'https://prepublish.f.qaotic.net/a07/americahls-100056/playlist_720p.m3u8', userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36' },
+      { id: 'relay', label: 'Relay', url: 'https://raw.githubusercontent.com/MachineSystems/archived_m3u8/main/america_hls.m3u8', userAgent: 'iPhone' },
     ],
     link: 'https://www.americatv.com.ar/vivo',
     sourceLabel: 'Grupo América'
@@ -193,13 +189,18 @@ const CHANNELS = {
 }
 
 let currentChannel = 'trece'
-let currentSource = 'oficial'
+let currentSource = null
 let hlsInstance = null
+let retryTimer = null
+const player = document.getElementById('player')
+const placeholder = document.getElementById('placeholder')
+const errorMsg = document.getElementById('errorMsg')
 
 /* ─── Channel switching ─── */
 function switchChannel(id) {
   if (id === currentChannel) return
   currentChannel = id
+  currentSource = null
   const ch = CHANNELS[id]
   if (!ch) return
 
@@ -215,6 +216,7 @@ function switchChannel(id) {
   document.getElementById('statusLink').href = ch.link
   document.getElementById('statusLink').textContent = new URL(ch.link).hostname
   document.getElementById('watermark').textContent = ch.slug.toUpperCase()
+  document.getElementById('statusRes').textContent = ''
 
   // sources
   const group = document.getElementById('srcGroup')
@@ -228,9 +230,8 @@ function switchChannel(id) {
     group.appendChild(btn)
   })
 
-  // pick first source
-  currentSource = ch.sources[0].id
-  loadSource(ch.sources[0])
+  // load first source
+  pickSource(ch.sources[0].id)
 }
 
 /* ─── Source picking ─── */
@@ -244,57 +245,83 @@ function pickSource(id) {
     el.classList.toggle('active', el.dataset.srcId === id)
   })
 
+  errorMsg.style.display = 'none'
   loadSource(src)
 }
 
+function showError(msg) {
+  errorMsg.textContent = msg
+  errorMsg.style.display = 'block'
+  setTimeout(() => errorMsg.style.display = 'none', 8000)
+}
+
+/* ─── Load HLS source ─── */
 function loadSource(src) {
   destroyHls()
+  player.style.display = ''
+  placeholder.classList.remove('hidden')
+  placeholder.textContent = 'Conectando...'
 
-  const embed = document.getElementById('playerEmbed')
-  const direct = document.getElementById('playerDirect')
-  const placeholder = document.getElementById('placeholder')
+  if (!Hls.isSupported()) {
+    if (player.canPlayType('application/vnd.apple.mpegurl')) {
+      player.src = src.url
+      player.addEventListener('loadedmetadata', () => {
+        player.play().catch(() => showError('Autoplay bloqueado. Tocá en el video.'))
+        placeholder.classList.add('hidden')
+      })
+      player.addEventListener('error', () => showError('Error al cargar el stream nativo'))
+      return
+    }
+    placeholder.textContent = 'HLS no soportado en este navegador'
+    return
+  }
 
-  embed.classList.add('hidden')
-  direct.classList.add('hidden')
-  placeholder.classList.add('hidden')
-  embed.src = ''
-  direct.src = ''
-
-  if (src.type === 'embed') {
-    embed.src = src.url
-    embed.classList.remove('hidden')
-  } else if (src.type === 'hls') {
-    direct.classList.remove('hidden')
-    if (Hls.isSupported()) {
-      const cfg = {}
-      if (src.referer) {
-        cfg.xhrSetup = (xhr) => xhr.setRequestHeader('Referer', src.referer)
-      }
-      if (src.userAgent) {
-        const origXhrSetup = cfg.xhrSetup
-        cfg.xhrSetup = (xhr) => {
-          xhr.setRequestHeader('User-Agent', src.userAgent)
-          if (origXhrSetup) origXhrSetup(xhr)
-        }
-      }
-      const hls = new Hls(cfg)
-      hls.loadSource(src.url)
-      hls.attachMedia(direct)
-      hls.on(Hls.Events.MANIFEST_PARSED, () => direct.play().catch(() => {}))
-      hlsInstance = hls
-    } else if (direct.canPlayType('application/vnd.apple.mpegurl')) {
-      direct.src = src.url
-      direct.addEventListener('loadedmetadata', () => direct.play().catch(() => {}))
-    } else {
-      placeholder.textContent = 'HLS no soportado en este navegador'
-      placeholder.classList.remove('hidden')
-      direct.classList.add('hidden')
+  const cfg = {}
+  if (src.referer) {
+    cfg.xhrSetup = (xhr) => xhr.setRequestHeader('Referer', src.referer)
+  }
+  if (src.userAgent) {
+    const origXhrSetup = cfg.xhrSetup
+    cfg.xhrSetup = (xhr) => {
+      xhr.setRequestHeader('User-Agent', src.userAgent)
+      if (origXhrSetup) origXhrSetup(xhr)
     }
   }
+
+  const hls = new Hls(cfg)
+
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    placeholder.classList.add('hidden')
+    player.play().catch(() => {})
+    const levels = hls.levels
+    if (levels && levels.length > 0) {
+      const max = levels.reduce((a, b) => (b.height || 0) > (a.height || 0) ? b : a)
+      if (max && max.height) {
+        const label = max.height >= 1080 ? 'FHD' : max.height >= 720 ? 'HD' : max.height >= 480 ? 'SD' : 'LD'
+        document.getElementById('statusRes').textContent = label + ' · ' + max.height + 'p'
+      }
+    }
+  })
+
+  hls.on(Hls.Events.ERROR, (event, data) => {
+    if (data.fatal) {
+      showError('Error: ' + (data.type === Hls.ErrorTypes.NETWORK_ERROR ? 'red de ' : '') + data.details)
+      destroyHls()
+      placeholder.textContent = 'Stream caído'
+      placeholder.classList.remove('hidden')
+    }
+  })
+
+  hls.loadSource(src.url)
+  hls.attachMedia(player)
+  hlsInstance = hls
 }
 
 function destroyHls() {
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+  player.removeAttribute('src')
+  player.load()
 }
 
 /* ─── Fullscreen ─── */
@@ -313,6 +340,11 @@ document.addEventListener('fullscreenchange', () => {
     ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
     : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V2h4M14 10v4h-4M2 10v4h4M14 6V2h-4"/></svg>'
   btn.title = fs ? 'Salir de pantalla completa' : 'Pantalla completa'
+})
+
+/* ─── Mute/unmute on click ─── */
+player.addEventListener('click', () => {
+  player.muted = !player.muted
 })
 
 /* ─── Init ─── */
