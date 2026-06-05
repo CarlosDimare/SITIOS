@@ -414,7 +414,6 @@ function loadStream(id, type, season, episode) {
   const iframe = document.createElement('iframe')
   iframe.allow = 'autoplay; fullscreen; picture-in-picture'
   iframe.allowFullscreen = true
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms')
   iframe.onload = () => {
     const loading = document.getElementById('player-loading')
     if (loading) loading.remove()
