@@ -3,18 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Canal 13 Argentina · En Vivo</title>
+<title>TV Argentina · En Vivo</title>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-  :root{--bg:#050508;--surface:#0a0a12;--panel:#111119;--border:#1a1a2a;--accent:#c8a84e;--accent2:#e74c3c;--text:#ececf0;--muted:#4e4e6a}
+  :root{--bg:#050508;--surface:#0a0a12;--panel:#111119;--border:#1a1a2a;--accent:#c8a84e;--accent2:#e74c3c;--text:#ececf0;--muted:#4e4e6a;--sidebar-w:200px}
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
 
-  .app{display:flex;flex-direction:column;height:100vh}
+  .app{display:flex;height:100vh}
 
-  header{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:10}
+  /* ── Sidebar ── */
+  .sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:relative;z-index:10}
+  .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent 5%,var(--accent) 50%,transparent 95%);opacity:.25}
+  .sidebar-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .sidebar-header .logo{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--accent)}
+  .sidebar-header .logo-sub{font-size:7px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-left:auto}
+
+  .ch-list{flex:1;overflow-y:auto;padding:6px 0}
+  .ch-list::-webkit-scrollbar{width:3px}
+  .ch-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+  .ch-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:var(--muted);width:100%;text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;transition:all .15s;border-left:3px solid transparent}
+  .ch-item:hover{background:rgba(255,255,255,.03);color:var(--text)}
+  .ch-item.active{color:var(--text);background:rgba(200,168,78,.06);border-left-color:var(--accent)}
+  .ch-item img{width:28px;height:28px;border-radius:4px;object-fit:contain;flex-shrink:0}
+  .ch-item .ch-label{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .ch-item .ch-label .name{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.5px}
+  .ch-item .ch-label .freq{font-size:7px;letter-spacing:1px;color:var(--muted)}
+
+  .src-section{padding:10px 14px 12px;border-top:1px solid var(--border)}
+  .src-label{font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:'Space Mono',monospace}
+  .src-group{display:flex;flex-direction:column;gap:3px}
+  .src-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.5px;padding:5px 8px;border-radius:4px;cursor:pointer;transition:all .15s;text-align:center}
+  .src-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .src-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+
+  .sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);font-size:7px;letter-spacing:1px;color:var(--muted);font-family:'Space Mono',monospace;text-align:center}
+
+  /* ── Main ── */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+
+  header{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:5}
   header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 5%,var(--accent) 50%,transparent 95%);opacity:.35}
 
   .ch-logo{height:32px;width:auto;object-fit:contain;filter:drop-shadow(0 0 8px rgba(200,168,78,.2))}
@@ -31,6 +62,7 @@
   .video-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden;min-height:0}
   .video-wrap iframe,.video-wrap video{width:100%;height:100%;border:none;background:#000;object-fit:contain}
   .video-wrap iframe.hidden,.video-wrap video.hidden{display:none}
+  .video-wrap .placeholder{color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-align:center}
 
   .watermark{position:absolute;bottom:12px;right:16px;opacity:.06;pointer-events:none;z-index:2;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:#fff}
 
@@ -38,16 +70,17 @@
   .status-bar a{color:var(--muted);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;text-decoration:none;transition:color .2s}
   .status-bar a:hover{color:var(--accent)}
 
-  .src-group{display:flex;gap:3px}
-  .src-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:.5px;padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .15s;white-space:nowrap}
-  .src-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .src-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
-
   .fs-btn{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:4px}
   .fs-btn:hover{border-color:var(--accent);color:var(--accent)}
   .fs-btn svg{width:14px;height:14px}
 
-  @media(max-width:600px){
+  @media(max-width:768px){
+    :root{--sidebar-w:56px}
+    .ch-item{padding:10px 12px;justify-content:center}
+    .ch-item .ch-label{display:none}
+    .src-section{display:none}
+    .sidebar-header .logo-sub{display:none}
+    .sidebar-footer{display:none}
     header{padding:8px 12px;gap:10px}
     .ch-logo,.ch-logo-fallback{height:26px;width:26px}
     .ch-name{font-size:11px}
@@ -59,74 +92,212 @@
 <body>
 <div class="app">
 
-  <header>
-    <img class="ch-logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Canal_13_Argentina_2023.svg/200px-Canal_13_Argentina_2023.svg.png" alt="Canal 13" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" crossorigin="anonymous">
-    <div class="ch-logo-fallback" style="display:none">13</div>
-    <div class="ch-info">
-      <div class="ch-name">Canal 13</div>
-      <div class="ch-sub">El Trece · Buenos Aires · Argentina</div>
+  <!-- ─── Sidebar ─── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">TV</span>
+      <span class="logo-sub">Argentina · 3 canales</span>
     </div>
-    <div class="live-tag"><span class="live-dot"></span>En Vivo</div>
-  </header>
 
-  <div class="video-wrap" id="videoWrap">
-    <iframe id="pOficial" src="https://api.vodgc.net/player/v2/embed/playerId/PRZ9KU1515679151/contentId/1427089" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="eager" importance="high" title="Oficial"></iframe>
-    <iframe id="pLhdtv" class="hidden" src="https://www.livehdtv.com/embed/el-trece/" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="lazy" title="LiveHDTV"></iframe>
-    <video id="pDirecto" class="hidden" muted autoplay playsinline preload="auto" title="Directo"></video>
-    <div class="watermark">CANAL 13</div>
-  </div>
-
-  <div class="status-bar">
-    <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Artear</span>
-    <div class="src-group">
-      <button class="src-btn active" onclick="pick('oficial')">Oficial</button>
-      <button class="src-btn" onclick="pick('lhdtv')">LiveHDTV</button>
-      <button class="src-btn" onclick="pick('directo')">Directo</button>
+    <div class="ch-list" id="chList">
+      <button class="ch-item active" data-channel="trece" onclick="switchChannel('trece')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Canal_13_Argentina_2023.svg/200px-Canal_13_Argentina_2023.svg.png" alt="Canal 13" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">Canal 13</span><span class="freq">El Trece</span></span>
+      </button>
+      <button class="ch-item" data-channel="telefe" onclick="switchChannel('telefe')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Telefe_logo_2020.svg/200px-Telefe_logo_2020.svg.png" alt="Telefe" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">Telefe</span><span class="freq">Canal 11</span></span>
+      </button>
+      <button class="ch-item" data-channel="america" onclick="switchChannel('america')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Am%C3%A9rica_TV_logo_2018.svg/200px-Am%C3%A9rica_TV_logo_2018.svg.png" alt="América TV" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span></span>
+      </button>
     </div>
-    <span style="flex:1"></span>
-    <a href="https://www.eltrecetv.com.ar/vivo/" target="_blank" rel="noopener">eltrecetv.com.ar</a>
-    <button class="fs-btn" id="fsBtn" onclick="toggleFS()" aria-label="Pantalla completa" title="Pantalla completa">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V2h4M14 10v4h-4M2 10v4h4M14 6V2h-4"/></svg>
-    </button>
-  </div>
 
+    <!-- source buttons rendered dynamically -->
+    <div class="src-section" id="srcSection">
+      <div class="src-label" id="srcLabel">Fuente</div>
+      <div class="src-group" id="srcGroup"></div>
+    </div>
+
+    <div class="sidebar-footer">carlosdimare.github.io/SITIOS</div>
+  </aside>
+
+  <!-- ─── Main ─── -->
+  <div class="main">
+    <header id="mainHeader">
+      <img class="ch-logo" id="hLogo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Canal_13_Argentina_2023.svg/200px-Canal_13_Argentina_2023.svg.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" crossorigin="anonymous">
+      <div class="ch-logo-fallback" id="hLogoFallback" style="display:none">TV</div>
+      <div class="ch-info">
+        <div class="ch-name" id="hName">Canal 13</div>
+        <div class="ch-sub" id="hSub">El Trece · Buenos Aires · Argentina</div>
+      </div>
+      <div class="live-tag"><span class="live-dot"></span>En Vivo</div>
+    </header>
+
+    <div class="video-wrap" id="videoWrap">
+      <iframe id="playerEmbed" src="" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="eager" importance="high" title="Player"></iframe>
+      <video id="playerDirect" class="hidden" muted autoplay playsinline preload="auto" title="Directo"></video>
+      <div class="placeholder hidden" id="placeholder">Seleccioná una fuente</div>
+      <div class="watermark" id="watermark">TV ARG</div>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusSource" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Artear</span>
+      <span style="flex:1"></span>
+      <a id="statusLink" href="https://www.eltrecetv.com.ar/vivo/" target="_blank" rel="noopener">eltrecetv.com.ar</a>
+      <button class="fs-btn" id="fsBtn" onclick="toggleFS()" aria-label="Pantalla completa" title="Pantalla completa">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V2h4M14 10v4h-4M2 10v4h4M14 6V2h-4"/></svg>
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
-const PLAYERS = { oficial: 'pOficial', lhdtv: 'pLhdtv', directo: 'pDirecto' }
-const M3U8 = 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8'
-let hlsInstance = null
-
-function pick(id) {
-  document.querySelectorAll('.video-wrap iframe, .video-wrap video').forEach(el => el.classList.add('hidden'))
-  document.querySelectorAll('.src-btn').forEach(el => el.classList.remove('active'))
-  document.querySelector('.src-btn[onclick*="' + id + '"]')?.classList.add('active')
-  const el = document.getElementById(PLAYERS[id])
-  if (!el) return
-  el.classList.remove('hidden')
-
-  if (id === 'directo') {
-    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
-    if (!el.src || el.src === '') {
-      el.src = '' // clear
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          xhrSetup(xhr) { xhr.setRequestHeader('Referer', 'https://vodgc.net') }
-        })
-        hls.loadSource(M3U8)
-        hls.attachMedia(el)
-        hls.on(Hls.Events.MANIFEST_PARSED, () => el.play().catch(() => {}))
-        hlsInstance = hls
-      } else if (el.canPlayType('application/vnd.apple.mpegurl')) {
-        el.src = M3U8
-        el.addEventListener('loadedmetadata', () => el.play().catch(() => {}))
-      }
-    }
-  } else {
-    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+/* ─── Channel Config ─── */
+const CHANNELS = {
+  trece: {
+    name: 'Canal 13', sub: 'El Trece · Buenos Aires · Argentina', slug: 'El Trece',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Canal_13_Argentina_2023.svg/200px-Canal_13_Argentina_2023.svg.png',
+    sources: [
+      { id: 'oficial', label: 'Oficial', type: 'embed', url: 'https://api.vodgc.net/player/v2/embed/playerId/PRZ9KU1515679151/contentId/1427089' },
+      { id: 'lhdtv', label: 'LiveHDTV', type: 'embed', url: 'https://www.livehdtv.com/embed/el-trece/' },
+      { id: 'directo', label: 'Directo', type: 'hls', url: 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8', referer: 'https://vodgc.net' }
+    ],
+    link: 'https://www.eltrecetv.com.ar/vivo/',
+    sourceLabel: 'Artear'
+  },
+  telefe: {
+    name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'Telefe',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Telefe_logo_2020.svg/200px-Telefe_logo_2020.svg.png',
+    sources: [
+      { id: 'lhdtv', label: 'LiveHDTV', type: 'embed', url: 'https://www.livehdtv.com/embed/ch453/' },
+      { id: 'directo1', label: 'Directo #1', type: 'hls', url: 'https://is-tucuman.cdn.rcs.net.ar/mnp/telefe_hls/playlist.m3u8' },
+      { id: 'directo2', label: 'Directo #2', type: 'hls', url: 'http://test_deportv-lh.akamaihd.net/i/TelefeHD_1@7273/index_1_av-p.m3u8' },
+      { id: 'youtube', label: 'YouTube', type: 'embed', url: 'https://www.youtube.com/embed/rYlbpTfQ5PI?autoplay=1' }
+    ],
+    link: 'https://mitelefe.com/',
+    sourceLabel: 'Paramount Global'
+  },
+  america: {
+    name: 'América TV', sub: 'Canal 2 · Buenos Aires · Argentina', slug: 'América TV',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Am%C3%A9rica_TV_logo_2018.svg/200px-Am%C3%A9rica_TV_logo_2018.svg.png',
+    sources: [
+      { id: 'oficial', label: 'Oficial', type: 'embed', url: 'https://vmf.edge-apps.net/embed/live.php?streamname=americahls-100056&autoplay=true' },
+      { id: 'lhdtv', label: 'LiveHDTV', type: 'embed', url: 'https://www.livehdtv.com/embed/america-tv-argentina/' },
+      { id: 'directo', label: 'Directo', type: 'hls', url: 'https://prepublish.f.qaotic.net/a07/americahls-100056/playlist_720p.m3u8', userAgent: 'Mozilla/5.0' }
+    ],
+    link: 'https://www.americatv.com.ar/vivo',
+    sourceLabel: 'Grupo América'
   }
 }
 
+let currentChannel = 'trece'
+let currentSource = 'oficial'
+let hlsInstance = null
+
+/* ─── Channel switching ─── */
+function switchChannel(id) {
+  if (id === currentChannel) return
+  currentChannel = id
+  const ch = CHANNELS[id]
+  if (!ch) return
+
+  // sidebar active
+  document.querySelectorAll('.ch-item').forEach(el => el.classList.remove('active'))
+  document.querySelector(`.ch-item[data-channel="${id}"]`)?.classList.add('active')
+
+  // header
+  document.getElementById('hLogo').src = ch.logo
+  document.getElementById('hName').textContent = ch.name
+  document.getElementById('hSub').textContent = ch.sub
+  document.getElementById('statusSource').textContent = ch.sourceLabel
+  document.getElementById('statusLink').href = ch.link
+  document.getElementById('statusLink').textContent = new URL(ch.link).hostname
+  document.getElementById('watermark').textContent = ch.slug.toUpperCase()
+
+  // sources
+  const group = document.getElementById('srcGroup')
+  group.innerHTML = ''
+  ch.sources.forEach((src, i) => {
+    const btn = document.createElement('button')
+    btn.className = 'src-btn' + (i === 0 ? ' active' : '')
+    btn.textContent = src.label
+    btn.dataset.srcId = src.id
+    btn.onclick = () => pickSource(src.id)
+    group.appendChild(btn)
+  })
+
+  // pick first source
+  currentSource = ch.sources[0].id
+  loadSource(ch.sources[0])
+}
+
+/* ─── Source picking ─── */
+function pickSource(id) {
+  const ch = CHANNELS[currentChannel]
+  const src = ch.sources.find(s => s.id === id)
+  if (!src) return
+  currentSource = id
+
+  document.querySelectorAll('#srcGroup .src-btn').forEach(el => {
+    el.classList.toggle('active', el.dataset.srcId === id)
+  })
+
+  loadSource(src)
+}
+
+function loadSource(src) {
+  destroyHls()
+
+  const embed = document.getElementById('playerEmbed')
+  const direct = document.getElementById('playerDirect')
+  const placeholder = document.getElementById('placeholder')
+
+  embed.classList.add('hidden')
+  direct.classList.add('hidden')
+  placeholder.classList.add('hidden')
+  embed.src = ''
+  direct.src = ''
+
+  if (src.type === 'embed') {
+    embed.src = src.url
+    embed.classList.remove('hidden')
+  } else if (src.type === 'hls') {
+    direct.classList.remove('hidden')
+    if (Hls.isSupported()) {
+      const cfg = {}
+      if (src.referer) {
+        cfg.xhrSetup = (xhr) => xhr.setRequestHeader('Referer', src.referer)
+      }
+      if (src.userAgent) {
+        const origXhrSetup = cfg.xhrSetup
+        cfg.xhrSetup = (xhr) => {
+          xhr.setRequestHeader('User-Agent', src.userAgent)
+          if (origXhrSetup) origXhrSetup(xhr)
+        }
+      }
+      const hls = new Hls(cfg)
+      hls.loadSource(src.url)
+      hls.attachMedia(direct)
+      hls.on(Hls.Events.MANIFEST_PARSED, () => direct.play().catch(() => {}))
+      hlsInstance = hls
+    } else if (direct.canPlayType('application/vnd.apple.mpegurl')) {
+      direct.src = src.url
+      direct.addEventListener('loadedmetadata', () => direct.play().catch(() => {}))
+    } else {
+      placeholder.textContent = 'HLS no soportado en este navegador'
+      placeholder.classList.remove('hidden')
+      direct.classList.add('hidden')
+    }
+  }
+}
+
+function destroyHls() {
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+}
+
+/* ─── Fullscreen ─── */
 function toggleFS() {
   const el = document.getElementById('videoWrap')
   if (!document.fullscreenElement) el.requestFullscreen()
@@ -143,6 +314,9 @@ document.addEventListener('fullscreenchange', () => {
     : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V2h4M14 10v4h-4M2 10v4h4M14 6V2h-4"/></svg>'
   btn.title = fs ? 'Salir de pantalla completa' : 'Pantalla completa'
 })
+
+/* ─── Init ─── */
+switchChannel('trece')
 </script>
 </body>
 </html>
