@@ -117,6 +117,10 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Am%C3%A9rica_TV_logo_2018.svg/200px-Am%C3%A9rica_TV_logo_2018.svg.png" alt="América TV" onerror="this.style.display='none'" crossorigin="anonymous">
         <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span></span>
       </button>
+      <button class="ch-item" data-channel="tvpublica" onclick="switchChannel('tvpublica')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Logo_TV_Publica.svg/240px-Logo_TV_Publica.svg.png" alt="TV Pública" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">TV Pública</span><span class="freq">Canal 7</span></span>
+      </button>
     </div>
 
     <div class="grp-label">Deportes</div>
@@ -179,6 +183,7 @@ const CHANNELS = {
     sources: [
       { id: 'cdn1', label: 'CDN #1', url: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', referer: 'https://vodgc.net' },
       { id: 'cdn2', label: 'CDN #2', url: 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8', referer: 'https://vodgc.net' },
+      { id: 'cdn3', label: 'CDN #3', url: 'https://streaming.eltrece.com.ar/hls/eltrece.m3u8', referer: 'https://eltrece.com.ar/' },
     ],
     link: 'https://www.eltrecetv.com.ar/vivo/',
     sourceLabel: 'Artear'
@@ -187,6 +192,7 @@ const CHANNELS = {
     name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'TELEFE',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Telefe_logo_2020.svg/200px-Telefe_logo_2020.svg.png',
     sources: [
+      { id: 'directo', label: 'Directo HLS', url: 'https://live.telefe.com/hls/telefe.m3u8', referer: 'https://telefe.com/' },
       { id: 'api', label: 'API Oficial', url: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8' },
       { id: 'pluto', label: 'Pluto TV (Intl)', url: 'https://siloh-mcdn.plutotv.net/lilo/production/TelefePluto/master.m3u8' },
     ],
@@ -207,18 +213,30 @@ const CHANNELS = {
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/TyC_Sports_logo.svg/200px-TyC_Sports_logo.svg.png',
     sources: [
       { id: 'amagi', label: 'Free CDN', url: 'https://amg26268-amg26268c14-freelivesports-emea-10267.playouts.now.amagi.tv/ts-us-e2-n2/playlist/amg26268-sportsstudio-tycsports-freelivesportsemea/playlist.m3u8' },
+      { id: 'claro', label: 'Claro TV', url: 'https://tycsports-live.clarotv.com.ar/hls/tycsports.m3u8', referer: 'https://clarotv.com.ar/' },
+      { id: 'vodgc', label: 'VODGC (geo)', url: 'https://live-04-11-tyc24.vodgc.net/tyc24/index_tyc24_1080.m3u8', referer: 'https://vodgc.net' },
     ],
     link: 'https://tycsports.com/',
     sourceLabel: 'Amagi CDN'
+  },
+  tvpublica: {
+    name: 'TV Pública', sub: 'Canal 7 · Buenos Aires · Argentina', slug: 'TV PÚBLICA',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Logo_TV_Publica.svg/240px-Logo_TV_Publica.svg.png',
+    sources: [
+      { id: 'directo', label: 'Directo HLS', url: 'https://live.tvpublica.ar/hls/live.m3u8' },
+    ],
+    link: 'https://tvpublica.com.ar/',
+    sourceLabel: 'Radio y TV Pública'
   },
   deportv: {
     name: 'DeporTV', sub: 'TV Pública · Argentina', slug: 'DEPORTV',
     logo: 'https://i.imgur.com/iyYLNRt.png',
     sources: [
       { id: 'tda', label: 'TDA', url: 'https://5fb24b460df87.streamlock.net/live-cont.ar/deportv/playlist.m3u8' },
+      { id: 'tvpublica', label: 'TV Pública Deportes', url: 'https://live.tvpublica.ar/hls/deportes.m3u8' },
     ],
     link: 'https://deportv.gov.ar/',
-    sourceLabel: 'TV Pública'
+    sourceLabel: 'Radio y TV Pública'
   }
 }
 
