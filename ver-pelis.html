@@ -32,8 +32,8 @@ input:focus{border-color:#f59e0b}
 .cb-meta{font-size:22px;color:#666}
 .cb-genres{font-size:20px;display:flex;flex-wrap:wrap;gap:3px}
 .cb-genre{display:inline-block;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:4px;padding:1px 6px;color:#f59e0b;font-size:18px}
-.cb-overview{font-size:22px;color:#888;line-height:1.3;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
-.cb-credits{font-size:20px;color:#666;margin-top:4px}
+.cb-overview{font-size:24px;color:#888;line-height:1.4}
+.cb-credits{font-size:22px;color:#666;margin-top:8px}
 .cb-credits span{color:#aaa}
 .modal-overlay{position:fixed;inset:0;z-index:100;background:#000000cc;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
@@ -310,12 +310,8 @@ function renderCardBack(d, type, el) {
   const topCast = cast.slice(0, 2).map(c => c.name).join(', ')
 
   el.innerHTML = `
-    <div class="cb-title">${title}</div>
-    <div class="cb-meta">${[year, rating && '★ ' + rating, runtime].filter(Boolean).join(' · ')}</div>
-    <div class="cb-genres">${genres}</div>
     <div class="cb-overview">${overview}</div>
     <div class="cb-credits">
-      ${director ? '<div>🎬 <span>' + director + '</span></div>' : ''}
       ${topCast ? '<div>👥 <span>' + topCast + '</span></div>' : ''}
     </div>`
 }
