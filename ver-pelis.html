@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Haz ver pelis</title>
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data: blob:; media-src * blob:; connect-src *;">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0f;color:#e0e0e0;font-family:system-ui,-apple-system,sans-serif}
@@ -87,6 +88,74 @@ const PROVIDERS = [
   { id: 'autoembed',name: 'AutoEmbed',movie: id => `https://autoembed.co/movie/tmdb/${id}`,              tv: (id,s,e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}` },
   { id: 'vidpop',   name: 'VidPop',  movie: id => `https://www.vidpop.xyz/embed/?id=${id}`,              tv: (id,s,e) => `https://www.vidpop.xyz/embed/?id=${id}&season=${s}&episode=${e}` },
 ]
+
+// ─── Ad Blocker ──────────────────────────────────────────────
+// Bloquea popups, ventanas emergentes, redirecciones y Publicidad molesta
+const AD_DOMAINS = [
+  'histats.com', 'popads.net', 'popadscdn.net', 'exoclick.com',
+  'propellerads.com', 'adsterra.com', 'trafficfactory.biz', 'cloustore.com',
+  'cloudnestra.com', 'hilltopads.com', 'juicyads.com', 'adbucks.net',
+  'adcpm.net', 'adreactor.com', 'adskeeper.co.uk', 'adultadblast.com',
+  'bidgear.com', 'clickadu.com', 'clickscoin.com', 'cpmgate.com',
+  'crazypopup.com', 'erovin.com', 'mobipopads.com', 'mypopupads.com',
+  'onclicka.com', 'onclickads.net', 'onclicksuper.com', 'optiads.com',
+  'popads.xyz', 'popcash.net', 'popmonetizer.com', 'popmood.com',
+  'poponlinegames.com', 'poptm.com', 'promopages.com', 'richads.com',
+  'shoporielder.com', 'stinks.com', 'thewhizmarketing.com', 'topcreativeformat.com',
+  'trafficforce.com', 'trafficjunction.com', 'trafficstars.com', 'trkme.net',
+  'underdog.media', 'wealthyaffiliate.com', 'xapads.com', 'zatos.com',
+  'llvpn.com', 'xxx.com', 'adult.xyz', 'clicks.xyz',
+  'gussiessmutchy.com', 'rq.alchemmauls.com',
+]
+const AD_PATTERNS = [
+  /\.(bid|click|trade|download|stream)\b/i,
+  /(popup|pop-under|popunder)/i,
+  /(advert|adser|adunit|banner)/i,
+  /(dirty|forced|push_notif)/i,
+  /\btrack(er|ing)?\b/i,
+  /(analytics|statcounter|histat)/i,
+]
+
+function isAdUrl(url) {
+  try {
+    const u = new URL(url)
+    return AD_DOMAINS.some(d => u.hostname.includes(d)) ||
+           AD_PATTERNS.some(p => p.test(u.hostname) || p.test(u.pathname))
+  } catch { return false }
+}
+
+// Bloquear window.open (popups)
+const _origOpen = window.open
+window.open = function() {
+  try {
+    const url = arguments[0] || ''
+    if (isAdUrl(url)) { console.log('[AdBlock] bloqueado:', url.slice(0,80)); return null }
+  } catch {}
+  return null // bloqueamos todo popup de terceros
+}
+
+// MutationObserver: barre el DOM cada 2s y elimina elementos publicitarios
+const adStyles = [
+  'position: fixed', 'position:fixed', 'z-index: 9999', 'z-index:9999',
+  'z-index: 2147483647', 'background: rgba(0,0,0,0.5)', 'background:rgba(0,0,0,0.5)',
+]
+function scanForAds() {
+  document.querySelectorAll('div, iframe, img, script, ins').forEach(el => {
+    // Eliminar iframes de publicidad que no sean el player
+    if (el.tagName === 'IFRAME' && !el.closest('#player-wrap') && !el.closest('.modal')) {
+      const src = el.src || ''
+      if (src && isAdUrl(src)) { el.remove(); return }
+    }
+  })
+}
+const adObserver = new MutationObserver(() => {
+  // sólo escaneamos si el modal está abierto (hay reproductor visible)
+  if (document.getElementById('modal')?.classList.contains('open')) {
+    scanForAds()
+  }
+})
+adObserver.observe(document.body, { childList: true, subtree: true, attributes: false })
+setInterval(scanForAds, 2000)
 
 // ─── State ──────────────────────────────────────────────────
 let allMovies = []
@@ -183,6 +252,9 @@ function loadStream(id, type, season, episode) {
   const iframe = document.createElement('iframe')
   iframe.allow = 'autoplay; fullscreen; picture-in-picture'
   iframe.allowFullscreen = true
+  // sandbox: permite scripts y mismo origen pero NO popups ni navegación del top
+  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups-to-escape-sandbox')
+  iframe.setAttribute('loading', 'lazy')
   iframe.onload = () => { playerWrap.innerHTML = ''; playerWrap.appendChild(iframe) }
   iframe.onerror = () => { playerWrap.innerHTML = '<div class="error">Error al cargar. Probá otro provider.</div>' }
   iframe.src = url
