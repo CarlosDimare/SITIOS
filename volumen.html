@@ -217,61 +217,87 @@ let W, H, time = 0;
 let fish = [], bgBubbles = [], lightRays = [];
 let fishScared = false;
 
+const SPECIES = [
+  { name:'fish',    speed: .6, size: [18,42] },
+  { name:'angelfish',speed: .5, size: [16,36] },
+  { name:'puffer',  speed: .4, size: [14,30] },
+  { name:'shark',   speed: .7, size: [40,70] },
+  { name:'turtle',  speed: .25, size: [30,50] },
+  { name:'crab',    speed: .35, size: [14,26] },
+  { name:'jelly',   speed: .3,  size: [20,40] },
+];
+
+const PALETTE = {
+  fish: [['#FBBF24','#D97706','#3B82F6'],['#EF4444','#B91C1C','#FCA5A5'],['#34D399','#059669','#6EE7B7'],['#FB923C','#EA580C','#FED7AA'],['#A78BFA','#7C3AED','#DDD6FE'],['#F472B6','#DB2777','#FBCFE8'],['#38BDF8','#0284C7','#BAE6FD'],['#FACC15','#CA8A04','#FEF08A']],
+  shark: [['#64748B','#475569','#94A3B8'],['#8B9DC3','#5C6E91','#A0B4D6']],
+  turtle: [['#22C55E','#16A34A','#86EFAC'],['#4ADE80','#22C55E','#BBF7D0']],
+  crab: [['#EF4444','#DC2626','#FCA5A5'],['#F87171','#EF4444','#FECACA']],
+  jelly: [['#E879F9','#D946EF','#F5D0FE'],['#C084FC','#A855F7','#E9D5FF']],
+};
+
 function resize() {
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
-  initFish(8); initBubbles(20); initLightRays(4);
+  initFish(14); initBubbles(20); initLightRays(4);
 }
 window.addEventListener('resize', resize);
 
-const PALETTE = [
-  ['#FBBF24','#D97706','#3B82F6'],
-  ['#EF4444','#B91C1C','#FCA5A5'],
-  ['#34D399','#059669','#6EE7B7'],
-  ['#FB923C','#EA580C','#FED7AA'],
-  ['#A78BFA','#7C3AED','#DDD6FE'],
-  ['#F472B6','#DB2777','#FBCFE8'],
-  ['#38BDF8','#0284C7','#BAE6FD'],
-];
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function createFish() {
-  const p = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-  const s = 18 + Math.random() * 26;
-  const sp = Math.floor(Math.random() * 3);
+  const species = Math.floor(Math.random() * 7);
+  const s = SPECIES[species];
+  const pal = PALETTE[s.name][Math.floor(Math.random() * PALETTE[s.name].length)];
+  const sz = s.size[0] + Math.random() * (s.size[1] - s.size[0]);
   return {
-    x: Math.random() * W, y: Math.random() * H * .8 + H * .1,
-    vx: (.5 + Math.random() * .8) * (Math.random() > .5 ? 1 : -1),
-    vy: (Math.random() - .5) * .3,
-    size: s, species: sp,
-    body: p[0], fin: p[1], accent: p[2],
-    tw: Math.random() * Math.PI * 2, twSpd: .05 + Math.random() * .04,
-    wb: Math.random() * Math.PI * 2, wbSpd: .01 + Math.random() * .02,
+    x: Math.random() * W,
+    y: species === 5 ? H * .82 + Math.random() * H * .08 : Math.random() * H * .8 + H * .08,
+    vx: s.speed * (.7 + Math.random() * .6) * (Math.random() > .5 ? 1 : -1),
+    vy: species === 5 ? 0 : (Math.random() - .5) * .2,
+    size: sz, species,
+    body: pal[0], fin: pal[1], accent: pal[2],
+    tw: Math.random() * 6, twSpd: .03 + Math.random() * .04,
+    wb: Math.random() * 6, wbSpd: .008 + Math.random() * .015,
     baseVx: 0, state: 'calm',
+    phase: Math.random() * 6,
+    legPhase: 0,
   };
 }
-function initFish(n) { fish = []; for (let i = 0; i < n; i++) { const f = createFish(); f.baseVx = f.vx; fish.push(f); } }
+function initFish(n) {
+  fish = [];
+  // Guarantee at least one of each species
+  for (let i = 0; i < 7; i++) { const f = createFish(); f.species = i; f.baseVx = f.vx; fish.push(f); }
+  for (let i = 7; i < n; i++) { const f = createFish(); f.baseVx = f.vx; fish.push(f); }
+  shuffle(fish);
+}
 function initBubbles(n) { bgBubbles = []; for (let i = 0; i < n; i++) bgBubbles.push({ x: Math.random() * W, y: Math.random() * H, r: 3 + Math.random() * 7, spd: .2 + Math.random() * .5, dr: (Math.random() - .5) * .3, wx: Math.random() * 100 }); }
 function initLightRays(n) { lightRays = []; for (let i = 0; i < n; i++) lightRays.push({ x: Math.random() * W, w: 20 + Math.random() * 60, spd: .05 + Math.random() * .1, a: .03 + Math.random() * .04, ph: Math.random() * 6 }); }
 
 function drawFish(f) {
   ctx.save(); ctx.translate(f.x, f.y);
   if (f.vx < 0) ctx.scale(-1, 1);
-  const s = f.s, wag = Math.sin(f.tw) * .3, bob = Math.sin(f.wb) * 1.5;
+  const s = f.size, wag = Math.sin(f.tw) * .3, bob = Math.sin(f.wb) * 1.5;
   ctx.translate(0, bob);
+
   if (f.species === 0) {
+    // Pez comun
     ctx.beginPath(); ctx.ellipse(0, 0, s * .5, s * .2, 0, 0, 7); ctx.fillStyle = f.body; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-s * .45, 0); ctx.lineTo(-s * .75, -s * .22 + wag * s * .3); ctx.lineTo(-s * .75, s * .22 + wag * s * .3); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
     ctx.beginPath(); ctx.moveTo(s * .05, -s * .18); ctx.lineTo(s * .15, -s * .38); ctx.lineTo(s * .3, -s * .2); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
     ctx.beginPath(); ctx.arc(s * .3, -s * .05, s * .08, 0, 7); ctx.fillStyle = 'white'; ctx.fill();
     ctx.beginPath(); ctx.arc(s * .33, -s * .05, s * .04, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
     ctx.beginPath(); ctx.arc(s * .35, -s * .08, s * .018, 0, 7); ctx.fillStyle = 'white'; ctx.fill();
+
   } else if (f.species === 1) {
+    // Pez angel
     ctx.beginPath(); ctx.moveTo(0, -s * .35); ctx.quadraticCurveTo(s * .25, -s * .15, s * .3, 0); ctx.quadraticCurveTo(s * .25, s * .15, 0, s * .35); ctx.quadraticCurveTo(-s * .25, s * .15, -s * .3, 0); ctx.quadraticCurveTo(-s * .25, -s * .15, 0, -s * .35); ctx.fillStyle = f.body; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-s * .28, 0); ctx.lineTo(-s * .7, -s * .3 + wag * s * .3); ctx.lineTo(-s * .7, s * .3 + wag * s * .3); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
     ctx.fillStyle = f.accent; ctx.globalAlpha = .4; ctx.fillRect(-s * .06, -s * .32, s * .12, s * .64); ctx.globalAlpha = 1;
     ctx.beginPath(); ctx.arc(s * .18, -s * .04, s * .07, 0, 7); ctx.fillStyle = 'white'; ctx.fill();
     ctx.beginPath(); ctx.arc(s * .21, -s * .04, s * .035, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
-  } else {
+
+  } else if (f.species === 2) {
+    // Pez globo
     ctx.beginPath(); ctx.arc(0, 0, s * .3, 0, 7); ctx.fillStyle = f.body; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.stroke();
     const spk = 8 + Math.floor(Math.random() * 3); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5;
     for (let i = 0; i < spk; i++) { const a = i / spk * 7 + 1; const r1 = s * .3, r2 = s * .36 + Math.sin(time * 2 + i) * .02; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke(); }
@@ -280,6 +306,113 @@ function drawFish(f) {
     ctx.beginPath(); ctx.arc(s * .18, -s * .06, s * .045, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
     ctx.beginPath(); ctx.arc(s * .2, -s * .1, s * .02, 0, 7); ctx.fillStyle = 'white'; ctx.fill();
     ctx.beginPath(); ctx.arc(0, s * .08, s * .18, 0, 3.15); ctx.fillStyle = f.accent; ctx.globalAlpha = .3; ctx.fill(); ctx.globalAlpha = 1;
+
+  } else if (f.species === 3) {
+    // TIBURON
+    const bodyGrad = ctx.createLinearGradient(0, -s * .25, 0, s * .05);
+    bodyGrad.addColorStop(0, '#94A3B8'); bodyGrad.addColorStop(1, '#64748B');
+    // Cuerpo torpedo
+    ctx.beginPath(); ctx.moveTo(s * .6, 0);
+    ctx.quadraticCurveTo(s * .5, -s * .22, 0, -s * .18);
+    ctx.quadraticCurveTo(-s * .5, -s * .18, -s * .7, s * .02);
+    ctx.quadraticCurveTo(-s * .5, s * .22, 0, s * .18);
+    ctx.quadraticCurveTo(s * .5, s * .22, s * .6, 0);
+    ctx.fillStyle = bodyGrad; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 2; ctx.stroke();
+    // Hocico punteagudo
+    ctx.beginPath(); ctx.moveTo(s * .6, -s * .03); ctx.lineTo(s * .8, -s * .02); ctx.lineTo(s * .6, s * .03); ctx.closePath();
+    ctx.fillStyle = '#94A3B8'; ctx.fill();
+    // Aleta dorsal grande
+    ctx.beginPath(); ctx.moveTo(-s * .05, -s * .17); ctx.lineTo(s * .08, -s * .42); ctx.lineTo(s * .22, -s * .18); ctx.closePath();
+    ctx.fillStyle = '#64748B'; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Aleta pectoral
+    ctx.beginPath(); ctx.moveTo(s * .15, s * .15); ctx.lineTo(s * .3, s * .35); ctx.lineTo(s * .25, s * .12); ctx.closePath();
+    ctx.fillStyle = '#64748B'; ctx.fill();
+    // Cola
+    ctx.beginPath(); ctx.moveTo(-s * .7, 0); ctx.lineTo(-s * .95, -s * .2 + wag * s * .15); ctx.lineTo(-s * .98, s * .05); ctx.lineTo(-s * .95, s * .2 + wag * s * .15); ctx.closePath();
+    ctx.fillStyle = '#64748B'; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Ojo pequeño y frio
+    ctx.beginPath(); ctx.arc(s * .38, -s * .06, s * .04, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .38, -s * .06, s * .015, 0, 7); ctx.fillStyle = 'white'; ctx.fill();
+    // Dientes (zigzag)
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i < 5; i++) { const x = s * .65 + i * s * .04; ctx.lineTo(x, s * .02); ctx.lineTo(x + s * .015, s * .06); }
+    ctx.stroke();
+
+  } else if (f.species === 4) {
+    // TORTUGA
+    // Caparazon
+    ctx.beginPath(); ctx.ellipse(0, -s * .02, s * .4, s * .32, 0, 0, 7);
+    ctx.fillStyle = '#22C55E'; ctx.fill(); ctx.strokeStyle = '#16A34A'; ctx.lineWidth = 2.5; ctx.stroke();
+    // Patron hexagonos
+    ctx.strokeStyle = '#15803D'; ctx.lineWidth = 1.5;
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 0; j++) {
+        const cx = i * s * .18, cy = j * s * .14 + s * .02;
+        ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * 7; ctx.lineTo(cx + Math.cos(a) * s * .08, cy + Math.sin(a) * s * .07); } ctx.closePath(); ctx.stroke();
+      }
+    }
+    // Cabeza
+    ctx.beginPath(); ctx.ellipse(s * .45, -s * .05, s * .14, s * .1, 0, 0, 7);
+    ctx.fillStyle = '#4ADE80'; ctx.fill(); ctx.strokeStyle = '#16A34A'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Ojos
+    ctx.beginPath(); ctx.arc(s * .5, -s * .08, s * .035, 0, 7); ctx.fillStyle = 'white'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .5, -s * .08, s * .018, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    // Aletas
+    ctx.fillStyle = '#4ADE80'; ctx.strokeStyle = '#16A34A'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-s * .25, s * .2); ctx.quadraticCurveTo(-s * .5, s * .38 + wag * s * .1, -s * .35, s * .18); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s * .15, s * .25); ctx.quadraticCurveTo(s * .35, s * .42 + wag * s * .1, s * .2, s * .2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Patita trasera
+    ctx.beginPath(); ctx.moveTo(-s * .3, s * .05); ctx.quadraticCurveTo(-s * .5, s * .12 + wag * s * .08, -s * .35, s * .02); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  } else if (f.species === 5) {
+    // CANGREJO
+    const walk = Math.sin(time * .08 + f.phase) * s * .04;
+    // Cuerpo ovalado
+    ctx.beginPath(); ctx.ellipse(0, 0, s * .25, s * .18, 0, 0, 7);
+    ctx.fillStyle = '#EF4444'; ctx.fill(); ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 2; ctx.stroke();
+    // Patas (3 de cada lado)
+    ctx.strokeStyle = '#DC2626'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < 3; i++) {
+        const yy = -s * .04 + i * s * .07;
+        ctx.beginPath(); ctx.moveTo(side * s * .18, yy); ctx.lineTo(side * s * .4 + walk, yy + s * .08); ctx.stroke();
+      }
+    }
+    // Pinzas grandes
+    ctx.fillStyle = '#DC2626'; ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 2;
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath(); ctx.moveTo(side * s * .2, -s * .12); ctx.lineTo(side * s * .38, -s * .25 + walk * .3); ctx.lineTo(side * s * .28, -s * .15); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Dedo de la pinza
+      ctx.beginPath(); ctx.moveTo(side * s * .38, -s * .25 + walk * .3); ctx.lineTo(side * s * .42, -s * .32 + walk * .3); ctx.stroke();
+    }
+    // Ojos saltones
+    ctx.beginPath(); ctx.arc(-s * .08, -s * .22, s * .06, 0, 7); ctx.fillStyle = '#FCA5A5'; ctx.fill(); ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(s * .08, -s * .22, s * .06, 0, 7); ctx.fillStyle = '#FCA5A5'; ctx.fill(); ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(-s * .08, -s * .22, s * .025, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .08, -s * .22, s * .025, 0, 7); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+
+  } else if (f.species === 6) {
+    // MEDUSA
+    const pulse = 1 + Math.sin(time * .04 + f.phase) * .05;
+    // Campana
+    ctx.beginPath(); ctx.arc(0, 0, s * .3 * pulse, 0, 7);
+    ctx.fillStyle = f.body; ctx.globalAlpha = .35; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.stroke();
+    // Puntos brillantes en la campana
+    ctx.fillStyle = 'white'; ctx.globalAlpha = .3;
+    for (let i = 0; i < 5; i++) { const a = i / 5 * 7; ctx.beginPath(); ctx.arc(Math.cos(a) * s * .15 * pulse, Math.sin(a) * s * .12 * pulse, s * .02, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    // Tentaculos
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.globalAlpha = .3;
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * 7 - .3;
+      const x0 = Math.cos(angle) * s * .28, y0 = Math.sin(angle) * s * .25;
+      ctx.beginPath(); ctx.moveTo(x0, y0);
+      let x = x0, y = y0;
+      for (let t = 0; t < s * .6; t += 5) { x += Math.sin((t + time * .02) * .2 + i) * 2; y += 4; ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
