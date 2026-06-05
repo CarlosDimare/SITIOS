@@ -40,14 +40,17 @@ input:focus{border-color:#f59e0b}
 .spinner{width:32px;height:32px;border:3px solid #1a1a2e;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .error{text-align:center;padding:40px 20px;color:#ef4444;font-size:14px}
-.info-toggle{background:none;border:none;color:#555;cursor:pointer;font-size:11px;padding:4px 8px}
-.info-toggle:hover{color:#f59e0b}
-.meta-info{font-size:12px;color:#aaa;padding:10px 18px;display:none;border-bottom:1px solid #1a1a2e;max-height:160px;overflow-y:auto}
-.meta-info.open{display:block}
-.meta-info .genre{display:inline-block;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:4px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0;color:#f59e0b}
-.meta-info .overview{font-size:12px;line-height:1.5;color:#999;margin:6px 0}
-.meta-info .credits{font-size:11px;color:#666;margin-top:4px}
-.meta-info .credits span{color:#aaa}
+#tooltip{display:none;position:fixed;z-index:200;background:#12121e;border:1px solid #2a2a3e;border-radius:8px;padding:12px;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.6);pointer-events:none}
+.tip-flex{display:flex;gap:10px}
+.tip-poster{flex-shrink:0;width:56px}
+.tip-poster img{width:100%;border-radius:4px;display:block}
+.tip-body{min-width:0}
+.tip-title{font-size:13px;font-weight:600;color:#e0e0e0;margin-bottom:2px}
+.tip-meta{font-size:11px;color:#666;margin-bottom:4px}
+.tip-genre{display:inline-block;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:3px;padding:1px 6px;font-size:10px;margin:1px 2px 1px 0;color:#f59e0b}
+.tip-overview{font-size:11px;color:#888;line-height:1.4;margin-top:4px}
+.tip-credit{font-size:11px;color:#666;margin-top:3px}
+.tip-loading{padding:20px;text-align:center}
 </style>
 </head>
 <body>
@@ -77,18 +80,10 @@ input:focus{border-color:#f59e0b}
       <label style="font-size:12px;color:#aaa">Episodio</label>
       <select id="episode-select" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 8px;color:#e0e0e0;font-size:12px"></select>
     </div>
-    <div style="display:flex;gap:6px;padding:4px 18px;border-bottom:1px solid #1a1a2e;align-items:center">
-      <button class="info-toggle" id="info-toggle" onclick="toggleInfo()">📋 Sinopsis</button>
-      <span id="info-badge" style="font-size:11px;color:#555;flex:1"></span>
-    </div>
-    <div class="meta-info" id="meta-info">
-      <div class="overview" id="overview"></div>
-      <div id="genres"></div>
-      <div class="credits" id="credits"></div>
-    </div>
     <div class="player-wrap" id="player-wrap"><div class="loading" id="player-loading"><div class="spinner"></div></div></div>
   </div>
 </div>
+<div id="tooltip"></div>
 <script>
 // ─── TMDB ────────────────────────────────────────────────────
 const TMDB_KEY = '8265bd1679663a7ea12ac168da84d2e8'
@@ -254,7 +249,7 @@ function renderItems(items) {
         const img = m.poster_path
           ? `${TMDB_IMG}${m.poster_path}`
           : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 185 278"><rect fill="%231a1a2e" width="185" height="278"/><text x="50%" y="50%" fill="%23444" font-size="40" text-anchor="middle" dy=".35em">🎬</text></svg>'
-        return `<div class="card" onclick="openPlayer(${m.id},'${isTv ? 'tv' : 'movie'}')">
+        return `<div class="card" data-id="${m.id}" data-type="${isTv ? 'tv' : 'movie'}" onclick="openPlayer(${m.id},'${isTv ? 'tv' : 'movie'}')">
           <img src="${img}" loading="lazy" alt="${title}">
           <div class="info">
             <h3>${title}</h3>
@@ -278,65 +273,93 @@ async function loadContent(category, mediaType, page = 1) {
   }
 }
 
-// ─── Player ─────────────────────────────────────────────────
-async function loadDetail(id, type) {
-  const infoEl = document.getElementById('meta-info')
-  const badgeEl = document.getElementById('info-badge')
-  const overviewEl = document.getElementById('overview')
-  const genresEl = document.getElementById('genres')
-  const creditsEl = document.getElementById('credits')
-  try {
-    const res = await fetch(TMDB.detail(id, type))
-    const d = await res.json()
-    const title = d.title || d.name || ''
-    modalTitle.textContent = title
+// ─── Tooltip hover info ─────────────────────────────────────
+const detailCache = new Map()
+let tipTimer = null
 
-    overviewEl.textContent = d.overview || 'Sin reseña disponible.'
+async function showTooltip(id, type, card) {
+  const tip = document.getElementById('tooltip')
+  const key = id + '_' + type
+  const rect = card.getBoundingClientRect()
 
-    genresEl.innerHTML = (d.genres || []).map(g => `<span class="genre">${g.name}</span>`).join('')
-
-    const year = (d.release_date || d.first_air_date || '').slice(0,4)
-    const rating = d.vote_average ? d.vote_average.toFixed(1) : ''
-    const runtime = d.runtime ? `${d.runtime}min` : d.episode_run_time?.[0] ? `${d.episode_run_time[0]}min` : ''
-    const badgeParts = [year, rating && `★ ${rating}`, runtime].filter(Boolean)
-    badgeEl.textContent = badgeParts.join(' · ')
-
-    // Director (movie) or Creator (tv)
-    const crew = d.credits?.crew || []
-    const cast = d.credits?.cast || []
-    const director = type === 'movie'
-      ? crew.filter(c => c.job === 'Director').map(c => c.name).join(', ')
-      : (d.created_by || []).map(c => c.name).join(', ')
-    const topCast = cast.slice(0,5).map(c => c.name).join(', ')
-    const lines = []
-    if (director) lines.push(`${type === 'movie' ? 'Director' : 'Creador'}: ${director}`)
-    if (topCast.length) lines.push(`Reparto: ${topCast}`)
-    creditsEl.innerHTML = lines.join('<br>')
-
-    infoEl.classList.remove('open')
-    document.getElementById('info-toggle').textContent = '📋 Sinopsis'
-  } catch {
-    badgeEl.textContent = ''
-    overviewEl.textContent = ''
-    genresEl.innerHTML = ''
-    creditsEl.innerHTML = ''
+  if (!detailCache.has(key)) {
+    tip.innerHTML = '<div class="tip-loading"><div class="spinner"></div></div>'
+    tip.style.display = 'block'
+    tip.style.left = Math.min(rect.right + 8, window.innerWidth - 350) + 'px'
+    tip.style.top = rect.top + 'px'
+    try {
+      const res = await fetch(TMDB.detail(id, type))
+      if (!res.ok) throw new Error('fail')
+      detailCache.set(key, await res.json())
+    } catch { tip.style.display = 'none'; return }
   }
+
+  const d = detailCache.get(key)
+  if (!d) { tip.style.display = 'none'; return }
+
+  const title = d.title || d.name || ''
+  const year = (d.release_date || d.first_air_date || '').slice(0,4)
+  const rating = d.vote_average ? d.vote_average.toFixed(1) : ''
+  const runtime = d.runtime ? d.runtime + 'min' : d.episode_run_time?.[0] ? d.episode_run_time[0] + 'min' : ''
+  const genres = (d.genres || []).map(g => `<span class="tip-genre">${g.name}</span>`).join('')
+  const overview = (d.overview || '').slice(0, 200) + (d.overview?.length > 200 ? '...' : '')
+  const crew = d.credits?.crew || []
+  const cast = d.credits?.cast || []
+  const director = type === 'movie'
+    ? crew.filter(c => c.job === 'Director').map(c => c.name).join(', ')
+    : (d.created_by || []).map(c => c.name).join(', ')
+  const topCast = cast.slice(0, 4).map(c => c.name).join(', ')
+  const poster = d.poster_path
+    ? `<img src="https://image.tmdb.org/t/p/w92${d.poster_path}" alt="">`
+    : ''
+
+  tip.innerHTML = `<div class="tip-flex">
+    ${poster ? '<div class="tip-poster">' + poster + '</div>' : ''}
+    <div class="tip-body">
+      <div class="tip-title">${title}</div>
+      <div class="tip-meta">${[year, rating && '★ ' + rating, runtime].filter(Boolean).join(' · ')}</div>
+      <div>${genres}</div>
+      <div class="tip-overview">${overview}</div>
+      ${director ? '<div class="tip-credit">🎬 ' + director + '</div>' : ''}
+      ${topCast ? '<div class="tip-credit">👥 ' + topCast + '</div>' : ''}
+    </div>
+  </div>`
+  tip.style.display = 'block'
+  let left = rect.right + 8
+  let top = rect.top
+  const tw = tip.offsetWidth
+  const th = tip.offsetHeight
+  if (left + tw > window.innerWidth - 10) left = rect.left - tw - 8
+  if (top + th > window.innerHeight - 10) top = window.innerHeight - th - 10
+  if (top < 4) top = 4
+  tip.style.left = left + 'px'
+  tip.style.top = top + 'px'
 }
 
-window.toggleInfo = function() {
-  const el = document.getElementById('meta-info')
-  const btn = document.getElementById('info-toggle')
-  const open = el.classList.toggle('open')
-  btn.textContent = open ? '📋 Ocultar' : '📋 Sinopsis'
-}
+function hideTooltip() { document.getElementById('tooltip').style.display = 'none' }
 
+grid.addEventListener('mouseover', e => {
+  const card = e.target.closest('.card')
+  if (!card) return
+  const id = card.dataset.id
+  const type = card.dataset.type
+  if (!id) return
+  clearTimeout(tipTimer)
+  tipTimer = setTimeout(() => showTooltip(id, type, card), 350)
+})
+grid.addEventListener('mouseout', e => {
+  if (e.target.closest('.card')) { clearTimeout(tipTimer); hideTooltip() }
+})
+
+// ─── Player ─────────────────────────────────────────────────
 window.openPlayer = function(id, type = 'movie', season, episode) {
   currentId = id
   currentType = type
   currentSeason = season || 1
   currentEpisode = episode || 1
   modal.classList.add('open')
-  modalTitle.textContent = 'Cargando...'
+  const cached = detailCache.get(id + '_' + type)
+  modalTitle.textContent = cached ? (cached.title || cached.name || '') : 'Cargando...'
 
   providersEl.innerHTML = PROVIDERS.map(p =>
     `<button class="${p.id === currentProvider.id ? 'active' : ''}" onclick="switchProvider('${p.id}')">${p.name}</button>`
@@ -369,7 +392,6 @@ window.openPlayer = function(id, type = 'movie', season, episode) {
     picker.style.display = 'none'
   }
 
-  loadDetail(id, type)
   loadStream(id, type, currentSeason, currentEpisode)
 }
 
