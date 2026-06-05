@@ -44,6 +44,19 @@
 
   .sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);font-size:7px;letter-spacing:1px;color:var(--muted);font-family:'Space Mono',monospace;text-align:center}
 
+  /* ── Proxy section ── */
+  .proxy-section{padding:8px 14px 10px;border-top:1px solid var(--border)}
+  .proxy-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);transition:color .15s;user-select:none}
+  .proxy-toggle:hover{color:var(--text)}
+  .proxy-toggle input[type=checkbox]{appearance:none;width:28px;height:14px;background:var(--border);border-radius:7px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .proxy-toggle input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--muted);transition:all .2s}
+  .proxy-toggle input[type=checkbox]:checked{background:rgba(200,168,78,.35)}
+  .proxy-toggle input[type=checkbox]:checked::after{left:16px;background:var(--accent)}
+  .proxy-input-row{margin-top:6px;transition:all .2s;overflow:hidden}
+  .proxy-input-row.hidden{max-height:0;margin-top:0;opacity:0;pointer-events:none}
+  .proxy-input{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:8px;padding:5px 8px;border-radius:4px;outline:none;transition:border .2s}
+  .proxy-input:focus{border-color:var(--accent)}
+
   /* ── Main ── */
   .main{flex:1;display:flex;flex-direction:column;min-width:0}
 
@@ -164,6 +177,18 @@
       <div class="src-group" id="srcGroup"></div>
     </div>
 
+    <div class="proxy-section" id="proxySection">
+      <div class="proxy-row">
+        <label class="proxy-toggle">
+          <input type="checkbox" id="proxyToggle" onchange="toggleProxy(this.checked)">
+          <span>Proxy HLS</span>
+        </label>
+      </div>
+      <div class="proxy-input-row hidden" id="proxyInputRow">
+        <input type="text" class="proxy-input" id="proxyUrlInput" placeholder="https://hls-proxy.workers.dev" onchange="setProxyUrl(this.value)">
+      </div>
+    </div>
+
     <div class="sidebar-footer">carlosdimare.github.io/SITIOS</div>
   </aside>
 
@@ -189,6 +214,7 @@
 
     <div class="status-bar">
       <span id="statusSource" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Artear</span>
+      <span id="statusProxy" style="font-family:'Space Mono',monospace;font-size:8px;color:var(--accent);margin-left:8px;display:none">PROXY</span>
       <span id="statusRes" style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-left:8px"></span>
       <span style="flex:1"></span>
       <a id="statusLink" href="https://www.eltrecetv.com.ar/vivo/" target="_blank" rel="noopener">eltrecetv.com.ar</a>
@@ -305,10 +331,61 @@ let currentChannel = 'trece'
 let currentSource = null
 let hlsInstance = null
 let retryTimer = null
+
 const player = document.getElementById('player')
 const embedFrame = document.getElementById('embedFrame')
 const placeholder = document.getElementById('placeholder')
 const errorMsg = document.getElementById('errorMsg')
+
+/* ─── Proxy state ─── */
+let proxyEnabled = false
+let proxyUrl = ''
+
+function initProxy() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('tv_proxy') || '{}')
+    proxyEnabled = saved.enabled || false
+    proxyUrl = saved.url || ''
+  } catch {}
+  document.getElementById('proxyToggle').checked = proxyEnabled
+  document.getElementById('proxyUrlInput').value = proxyUrl
+  if (proxyEnabled) {
+    document.getElementById('proxyInputRow').classList.remove('hidden')
+  }
+}
+
+function toggleProxy(enabled) {
+  proxyEnabled = enabled
+  saveProxy()
+  document.getElementById('proxyInputRow').classList.toggle('hidden', !enabled)
+  if (enabled && currentSource) reloadCurrentSource()
+}
+
+function setProxyUrl(url) {
+  proxyUrl = url.trim()
+  saveProxy()
+  if (proxyEnabled && currentSource) reloadCurrentSource()
+}
+
+function saveProxy() {
+  localStorage.setItem('tv_proxy', JSON.stringify({ enabled: proxyEnabled, url: proxyUrl }))
+}
+
+function reloadCurrentSource() {
+  const ch = CHANNELS[currentChannel]
+  const src = ch.sources.find(s => s.id === currentSource)
+  if (src && !src.embed) loadSource(src)
+}
+
+function proxyUrlFor(rawUrl) {
+  if (!proxyEnabled || !proxyUrl) return rawUrl
+  try {
+    const u = new URL(rawUrl)
+    return proxyUrl.replace(/\/+$/, '') + '?url=' + encodeURIComponent(rawUrl) + '&ref=' + encodeURIComponent(u.hostname)
+  } catch {
+    return rawUrl
+  }
+}
 
 /* ─── Channel switching ─── */
 function switchChannel(id) {
@@ -374,6 +451,8 @@ function loadSource(src) {
   destroyHls()
   placeholder.classList.add('hidden')
 
+  const proxyIndicator = document.getElementById('statusProxy')
+
   if (src.embed) {
     player.style.display = 'none'
     embedFrame.style.display = ''
@@ -382,6 +461,7 @@ function loadSource(src) {
     embedFrame.src = src.embed
     embedFrame.onload = () => placeholder.classList.add('hidden')
     document.getElementById('statusRes').textContent = 'EMBED'
+    proxyIndicator.style.display = 'none'
     return
   }
 
@@ -391,9 +471,12 @@ function loadSource(src) {
   placeholder.classList.remove('hidden')
   placeholder.textContent = 'Conectando...'
 
+  const hlsUrl = proxyUrlFor(src.url)
+  proxyIndicator.style.display = (hlsUrl !== src.url) ? '' : 'none'
+
   if (!Hls.isSupported()) {
     if (player.canPlayType('application/vnd.apple.mpegurl')) {
-      player.src = src.url
+      player.src = hlsUrl
       player.addEventListener('loadedmetadata', () => {
         player.play().catch(() => showError('Autoplay bloqueado. Tocá en el video.'))
         placeholder.classList.add('hidden')
@@ -434,7 +517,7 @@ function loadSource(src) {
     }
   })
 
-  hls.loadSource(src.url)
+  hls.loadSource(hlsUrl)
   hls.attachMedia(player)
   hlsInstance = hls
 }
@@ -472,6 +555,7 @@ player.addEventListener('click', () => {
 })
 
 /* ─── Init ─── */
+initProxy()
 switchChannel('trece')
 </script>
 </body>
