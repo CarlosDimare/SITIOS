@@ -123,11 +123,11 @@
     <div class="grp-label">General</div>
     <div class="ch-list" id="chList">
       <button class="ch-item active" data-channel="trece" onclick="switchChannel('trece')">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Canal_13_Argentina_2023.svg" alt="Canal 13" onerror="this.style.display='none'" crossorigin="anonymous">
+        <img src="logos/canal13.svg" alt="Canal 13" onerror="this.style.display='none'" crossorigin="anonymous">
         <span class="ch-label"><span class="name">Canal 13</span><span class="freq">El Trece</span></span>
       </button>
       <button class="ch-item" data-channel="telefe" onclick="switchChannel('telefe')">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/f/f0/Telefe_logo_2020.svg" alt="Telefe" onerror="this.style.display='none'" crossorigin="anonymous">
+        <img src="logos/telefe.png" alt="Telefe" onerror="this.style.display='none'" crossorigin="anonymous">
         <span class="ch-label"><span class="name">Telefe</span><span class="freq">Canal 11</span></span>
       </button>
       <button class="ch-item" data-channel="america" onclick="switchChannel('america')">
@@ -195,7 +195,7 @@
   <!-- ─── Main ─── -->
   <div class="main">
     <header id="mainHeader">
-      <img class="ch-logo" id="hLogo" src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Canal_13_Argentina_2023.svg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" crossorigin="anonymous">
+      <img class="ch-logo" id="hLogo" src="logos/canal13.svg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" crossorigin="anonymous">
       <div class="ch-logo-fallback" id="hLogoFallback" style="display:none">TV</div>
       <div class="ch-info">
         <div class="ch-name" id="hName">Canal 13</div>
@@ -230,7 +230,7 @@
 const CHANNELS = {
   trece: {
     name: 'Canal 13', sub: 'El Trece · Buenos Aires · Argentina', slug: 'EL TRECE',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Canal_13_Argentina_2023.svg',
+    logo: 'logos/canal13.svg',
     sources: [
       { id: 'cdn1', label: 'VODGC', url: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8' },
     ],
@@ -239,7 +239,7 @@ const CHANNELS = {
   },
   telefe: {
     name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'TELEFE',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Telefe_logo_2020.svg',
+    logo: 'logos/telefe.png',
     sources: [
       { id: 'pluto', label: 'Pluto TV', url: 'https://siloh-mcdn.plutotv.net/lilo/production/TelefePluto/master.m3u8' },
     ],

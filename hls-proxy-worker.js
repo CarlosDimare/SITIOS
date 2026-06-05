@@ -24,21 +24,39 @@
 // Headers por defecto para upstream
 const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
+const CORS_HEADERS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': '*',
+  'access-control-allow-methods': 'GET, OPTIONS',
+}
+
+function cors(res) {
+  for (const [k, v] of Object.entries(CORS_HEADERS)) {
+    if (!res.headers.has(k)) res.headers.set(k, v)
+  }
+  return res
+}
+
 export default {
   async fetch(request) {
+    // Handle OPTIONS preflight
+    if (request.method === 'OPTIONS') {
+      return cors(new Response(null, { status: 204 }))
+    }
+
     try {
       const url = new URL(request.url)
 
       // Status / health endpoint
       if (url.pathname === '/' || url.pathname === '/status') {
-        return new Response(JSON.stringify({ ok: true, service: 'hls-proxy' }), {
-          headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
-        })
+        return cors(new Response(JSON.stringify({ ok: true, service: 'hls-proxy' }), {
+          headers: { 'content-type': 'application/json' },
+        }))
       }
 
       const targetUrl = url.searchParams.get('url')
       if (!targetUrl) {
-        return new Response('Missing ?url parameter', { status: 400 })
+        return cors(new Response('Missing ?url parameter', { status: 400 }))
       }
 
       const decodedTarget = decodeURIComponent(targetUrl)
@@ -59,9 +77,11 @@ export default {
       })
 
       if (!upstreamResponse.ok) {
-        return new Response('Upstream error: ' + upstreamResponse.status, {
+        const body = await upstreamResponse.text().catch(() => '')
+        return cors(new Response(body || 'Upstream error: ' + upstreamResponse.status, {
           status: upstreamResponse.status,
-        })
+          headers: { 'content-type': upstreamResponse.headers.get('content-type') || 'text/plain' },
+        }))
       }
 
       const contentType = upstreamResponse.headers.get('content-type') || ''
@@ -120,26 +140,23 @@ export default {
           }
         )
 
-        return new Response(text, {
+        return cors(new Response(text, {
           headers: {
-            'Content-Type': 'application/vnd.apple.mpegurl',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': '*',
-            'Cache-Control': 'public, max-age=5',
+            'content-type': 'application/vnd.apple.mpegurl',
+            'cache-control': 'public, max-age=5',
           },
-        })
+        }))
       }
 
       // ─── Segment / Binary response ───
-      return new Response(upstreamResponse.body, {
+      return cors(new Response(upstreamResponse.body, {
         headers: {
-          'Content-Type': contentType || 'application/octet-stream',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=30',
+          'content-type': contentType || 'application/octet-stream',
+          'cache-control': 'public, max-age=30',
         },
-      })
+      }))
     } catch (err) {
-      return new Response('Proxy error: ' + err.message, { status: 500 })
+      return cors(new Response('Proxy error: ' + err.message, { status: 500 }))
     }
   },
 }
