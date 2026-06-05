@@ -135,7 +135,7 @@
         <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span></span>
       </button>
       <button class="ch-item" data-channel="tvpublica" onclick="switchChannel('tvpublica')">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/7/7c/Logo_TV_Publica.svg" alt="TV Pública" onerror="this.style.display='none'" crossorigin="anonymous">
+        <img src="logos/tvpublica.ico" alt="TV Pública" onerror="this.style.display='none'" crossorigin="anonymous">
         <span class="ch-label"><span class="name">TV Pública</span><span class="freq">Canal 7</span></span>
       </button>
     </div>
@@ -241,23 +241,23 @@ const CHANNELS = {
     name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'TELEFE',
     logo: 'logos/telefe.png',
     sources: [
-      { id: 'directo', label: 'Directo HLS', url: 'http://181.13.252.102:8000/play/a06c/index.m3u8' },
+      { id: 'youtube', label: 'YouTube', embed: 'https://www.youtube.com/embed/sMz81I5lr9o?autoplay=1' },
+      { id: 'directo', label: 'Directo HLS', url: 'http://181.13.252.102:8000/play/a06c/index.m3u8', direct: true },
       { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=telefe' },
       { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=telefe' },
     ],
     link: 'https://mitelefe.com/',
-    sourceLabel: 'IPTV · StreamTP'
+    sourceLabel: 'YouTube · Telefe'
   },
   america: {
     name: 'América TV', sub: 'Canal 2 · Buenos Aires · Argentina', slug: 'AMÉRICA TV',
     logo: 'logos/logo-america.svg',
     sources: [
+      { id: 'youtube', label: 'YouTube', embed: 'https://www.youtube.com/embed/zcWXboTnous?autoplay=1' },
       { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=america' },
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=america' },
-      { id: 'streamtp2', label: 'StreamTP 2', embed: 'https://streamtp-x-y-z.ws/global2.php?stream=america' },
     ],
     link: 'https://www.americatv.com.ar/vivo',
-    sourceLabel: 'StreamTP · Grupo América'
+    sourceLabel: 'YouTube · América TV'
   },
   tyc: {
     name: 'TyC Sports', sub: 'Deportes · Argentina', slug: 'TYC SPORTS',
@@ -270,12 +270,13 @@ const CHANNELS = {
   },
   tvpublica: {
     name: 'TV Pública', sub: 'Canal 7 · Buenos Aires · Argentina', slug: 'TV PÚBLICA',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Logo_TV_Publica.svg',
+    logo: 'logos/tvpublica.ico',
     sources: [
       { id: 'directo', label: 'Directo HLS', url: 'https://live.tvpublica.ar/hls/live.m3u8' },
+      { id: 'youtube', label: 'YouTube', embed: 'https://www.youtube.com/embed/mbM83qii8i8?autoplay=1' },
     ],
     link: 'https://tvpublica.com.ar/',
-    sourceLabel: 'Radio y TV Pública'
+    sourceLabel: 'TV Pública · YouTube'
   },
   deportv: {
     name: 'DeporTV', sub: 'TV Pública · Argentina', slug: 'DEPORTV',
@@ -488,8 +489,8 @@ function loadSource(src) {
   placeholder.classList.remove('hidden')
   placeholder.textContent = 'Conectando...'
 
-  const hlsUrl = proxyUrlFor(src.url)
-  proxyIndicator.style.display = proxyEnabled ? '' : 'none'
+  const hlsUrl = src.direct ? src.url : proxyUrlFor(src.url)
+  proxyIndicator.style.display = proxyEnabled && !src.direct ? '' : 'none'
 
   if (!Hls.isSupported()) {
     if (player.canPlayType('application/vnd.apple.mpegurl')) {
