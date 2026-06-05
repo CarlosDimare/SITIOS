@@ -28,6 +28,14 @@ export default {
   async fetch(request) {
     try {
       const url = new URL(request.url)
+
+      // Status / health endpoint
+      if (url.pathname === '/' || url.pathname === '/status') {
+        return new Response(JSON.stringify({ ok: true, service: 'hls-proxy' }), {
+          headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
+        })
+      }
+
       const targetUrl = url.searchParams.get('url')
       if (!targetUrl) {
         return new Response('Missing ?url parameter', { status: 400 })

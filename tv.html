@@ -185,7 +185,7 @@
         </label>
       </div>
       <div class="proxy-input-row hidden" id="proxyInputRow">
-        <input type="text" class="proxy-input" id="proxyUrlInput" placeholder="http://localhost:3030" onchange="setProxyUrl(this.value)">
+        <input type="text" class="proxy-input" id="proxyUrlInput" placeholder="ej: http://localhost:3030 (opcional)" onchange="setProxyUrl(this.value)">
       </div>
     </div>
 
@@ -337,81 +337,6 @@ const embedFrame = document.getElementById('embedFrame')
 const placeholder = document.getElementById('placeholder')
 const errorMsg = document.getElementById('errorMsg')
 
-/* ─── HLS.js custom loader (public CORS proxy) ─── */
-const PUBLIC_PROXIES = [
-  // path-based: relative URLs resolve automatically
-  u => 'https://corsproxy.lol/' + u,
-  // query-based: needs M3U8 relative URL rewrite
-  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-]
-
-class CorsProxyLoader {
-  load(context, config, callbacks) {
-    const url = context.url
-    this._tryFetch(url, 0, callbacks, context, config)
-  }
-
-  _processM3u8(text, upstreamUrl) {
-    // Resolve relative URLs against the upstream base
-    // (only needed for query-based proxies like allorigins)
-    const baseUrl = upstreamUrl.substring(0, upstreamUrl.lastIndexOf('/') + 1)
-    return text.replace(/^([^#][^\r\n]*)/gm, (line) => {
-      line = line.trim()
-      if (!line) return line
-      try {
-        return new URL(line, baseUrl).toString()
-      } catch {
-        return line
-      }
-    })
-  }
-
-  async _tryFetch(url, attempt, callbacks, context, config) {
-    if (attempt >= PUBLIC_PROXIES.length) {
-      callbacks.onError(
-        { code: 0, text: 'Todos los proxies públicos fallaron', url },
-        config,
-        context,
-        null,
-      )
-      return
-    }
-
-    const proxyUrl = PUBLIC_PROXIES[attempt](url)
-    const isQueryBased = attempt === 1
-
-    try {
-      const res = await fetch(proxyUrl)
-      if (!res.ok) throw new Error('HTTP ' + res.status)
-
-      const ct = res.headers.get('content-type') || ''
-      const isM3u8 = ct.includes('mpegurl') || ct.includes('x-mpegURL') || url.endsWith('.m3u8')
-
-      let data
-      if (isM3u8) {
-        let text = await res.text()
-        if (isQueryBased) text = this._processM3u8(text, url)
-        data = text
-      } else {
-        data = await res.arrayBuffer()
-      }
-
-      callbacks.onSuccess(
-        { data, url: proxyUrl },
-        { ...config, aborted: false, loaded: true, total: data.length || 0, retry: attempt },
-        context,
-        null,
-      )
-    } catch {
-      this._tryFetch(url, attempt + 1, callbacks, context, config)
-    }
-  }
-
-  abort() {}
-  destroy() {}
-  updateJudge() {}
-}
-
 /* ─── Proxy state ─── */
 let proxyEnabled = false
 let proxyUrl = ''
@@ -455,7 +380,7 @@ function reloadCurrentSource() {
 function proxyUrlFor(rawUrl) {
   if (!proxyEnabled) return rawUrl
 
-  // If user provided a custom proxy URL, use it (query-based)
+  // If user provided a custom proxy URL, use it
   if (proxyUrl) {
     try {
       const u = new URL(rawUrl)
@@ -465,8 +390,14 @@ function proxyUrlFor(rawUrl) {
     }
   }
 
-  // No custom URL → return raw URL, the custom loader handles proxying
-  return rawUrl
+  // No custom URL → use the Cloudflare Worker as default
+  const defaultProxy = 'https://hls-proxy.carlosdimare.workers.dev'
+  try {
+    const u = new URL(rawUrl)
+    return defaultProxy + '/proxy?url=' + encodeURIComponent(rawUrl) + '&ref=' + encodeURIComponent(u.hostname)
+  } catch {
+    return rawUrl
+  }
 }
 
 /* ─── Channel switching ─── */
@@ -554,8 +485,7 @@ function loadSource(src) {
   placeholder.textContent = 'Conectando...'
 
   const hlsUrl = proxyUrlFor(src.url)
-  const usingProxy = proxyEnabled && (proxyUrl ? hlsUrl !== src.url : true)
-  proxyIndicator.style.display = usingProxy ? '' : 'none'
+  proxyIndicator.style.display = proxyEnabled ? '' : 'none'
 
   if (!Hls.isSupported()) {
     if (player.canPlayType('application/vnd.apple.mpegurl')) {
@@ -572,9 +502,6 @@ function loadSource(src) {
   }
 
   const cfg = {}
-  if (proxyEnabled && !proxyUrl) {
-    cfg.loader = CorsProxyLoader
-  }
   if (src.userAgent) {
     cfg.xhrSetup = (xhr) => xhr.setRequestHeader('User-Agent', src.userAgent)
   }
