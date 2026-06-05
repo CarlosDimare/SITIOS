@@ -244,10 +244,11 @@ window.addEventListener('resize', resize);
 
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-function createFish() {
-  const species = Math.floor(Math.random() * 7);
+function createFish(species) {
+  if (species === undefined) species = Math.floor(Math.random() * 7);
   const s = SPECIES[species];
-  const pal = PALETTE[s.name][Math.floor(Math.random() * PALETTE[s.name].length)];
+  const palKey = ['fish','fish','fish','shark','turtle','crab','jelly'][species];
+  const pal = PALETTE[palKey][Math.floor(Math.random() * PALETTE[palKey].length)];
   const sz = s.size[0] + Math.random() * (s.size[1] - s.size[0]);
   return {
     x: Math.random() * W,
@@ -266,7 +267,7 @@ function createFish() {
 function initFish(n) {
   fish = [];
   // Guarantee at least one of each species
-  for (let i = 0; i < 7; i++) { const f = createFish(); f.species = i; f.baseVx = f.vx; fish.push(f); }
+  for (let i = 0; i < 7; i++) { const f = createFish(i); f.baseVx = f.vx; fish.push(f); }
   for (let i = 7; i < n; i++) { const f = createFish(); f.baseVx = f.vx; fish.push(f); }
   shuffle(fish);
 }
