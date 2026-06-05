@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bajo el Mar - Medidor de Voz</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Fredoka',sans-serif;
+  background:radial-gradient(circle at 50% 30%,#1a365d 0%,#0a192f 100%);
+  min-height:100dvh;
+  overflow:hidden;
+}
+@keyframes wave{
+  0%,100%{transform:translateY(0) scaleY(1)}
+  50%{transform:translateY(-8px) scaleY(1.04)}
+}
+@keyframes sway{
+  0%,100%{transform:rotate(-2deg)}
+  50%{transform:rotate(2deg)}
+}
+.wave-bg{animation:wave 6s ease-in-out infinite}
+.sway{animation:sway 4s ease-in-out infinite}
+@keyframes floatUp{
+  0%{transform:translateY(110vh) translateX(0);opacity:0}
+  10%{opacity:0.7}
+  85%{opacity:0.7}
+  100%{transform:translateY(-10vh) translateX(var(--drift));opacity:0}
+}
+.bubble{
+  position:absolute;bottom:-50px;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,rgba(255,255,255,0.5),rgba(255,255,255,0.1));
+  border:1.5px solid rgba(255,255,255,0.3);
+  pointer-events:none;will-change:transform;
+}
+@keyframes pulse-ring{
+  0%{box-shadow:0 0 0 0 rgba(34,211,238,0.6)}
+  70%{box-shadow:0 0 0 20px rgba(34,211,238,0)}
+  100%{box-shadow:0 0 0 0 rgba(34,211,238,0)}
+}
+.pulse-ring{animation:pulse-ring 2s infinite}
+@keyframes shimmer{
+  0%{background-position:-200% center}
+  100%{background-position:200% center}
+}
+.shimmer{
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.15) 50%,transparent 100%);
+  background-size:200% 100%;
+  animation:shimmer 3s infinite;
+}
+/* Fish bounce squish */
+@keyframes fishBounce{
+  0%,100%{transform:scale(1) translateY(0)}
+  25%{transform:scale(1.02,0.98) translateY(-6px)}
+  50%{transform:scale(1) translateY(-10px)}
+  75%{transform:scale(0.98,1.02) translateY(-4px)}
+}
+.fish-scared{animation:fishBounce 0.6s ease-in-out infinite}
+/* Screen transitions */
+.screen{transition:opacity 0.4s ease,transform 0.4s ease}
+.screen-hidden{opacity:0;transform:scale(0.96);pointer-events:none;position:absolute}
+.screen-visible{opacity:1;transform:scale(1)}
+/* Volume bar water effect */
+#volume-bar::after{
+  content:'';position:absolute;top:-4px;left:-4px;right:-4px;height:10px;
+  background:inherit;border-radius:50%;filter:blur(3px);
+}
+</style>
+</head>
+<body class="relative text-white flex flex-col items-center justify-between p-4 md:p-8 select-none">
+
+<!-- Algas marinas SVG -->
+<div class="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-25" aria-hidden="true">
+  <svg class="absolute bottom-0 left-3 w-20 h-72 text-emerald-500 wave-bg" viewBox="0 0 100 300" fill="currentColor">
+    <path d="M30,300 C10,200 50,100 20,0 C40,100 0,200 30,300Z"/>
+    <path d="M60,300 C40,220 70,140 50,40 C70,140 30,220 60,300Z" opacity="0.6"/>
+  </svg>
+  <svg class="absolute bottom-0 right-3 w-20 h-80 text-emerald-600 wave-bg sway" viewBox="0 0 100 300" fill="currentColor">
+    <path d="M50,300 C20,180 80,90 40,0 C60,90 10,180 50,300Z"/>
+    <path d="M20,300 C5,210 40,120 15,20 C30,120 -10,210 20,300Z" opacity="0.5"/>
+  </svg>
+</div>
+
+<!-- Burbujas de fondo -->
+<div id="bubble-container" class="absolute inset-0 pointer-events-none z-10 overflow-hidden" aria-hidden="true"></div>
+
+<!-- Header -->
+<header class="w-full max-w-2xl text-center z-20 mt-4 md:mt-6">
+  <h1 class="text-3xl md:text-4xl font-bold tracking-wide text-cyan-300 drop-shadow-[0_2px_12px_rgba(34,211,238,0.35)]">
+    🌊 El Mar del Silencio
+  </h1>
+  <p class="text-sm md:text-base text-cyan-200/70 mt-1">Hablemos suave como las olas para no asustar a los peces</p>
+</header>
+
+<!-- START -->
+<div id="screen-start" class="screen screen-visible flex-1 flex flex-col items-center justify-center z-20 max-w-md w-full px-6">
+  <div class="bg-blue-950/70 border-2 border-cyan-400/30 p-8 rounded-3xl text-center shadow-2xl shadow-cyan-900/30 backdrop-blur-md w-full">
+    <div class="w-24 h-24 bg-cyan-500/15 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-cyan-400 pulse-ring">
+      <svg class="w-12 h-12 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+      </svg>
+    </div>
+    <h2 class="text-2xl font-bold mb-3 text-cyan-200">¿Listo para sumergirte?</h2>
+    <p class="text-sm text-slate-300/80 mb-6 leading-relaxed">
+      Necesitamos acceso al micrófono para medir el volumen de tu voz en tiempo real.
+    </p>
+    <button id="btn-start" class="w-full bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 text-blue-950 font-bold py-4 px-8 rounded-2xl transition-all transform hover:scale-[1.03] active:scale-95 shadow-lg text-lg focus:outline-none focus:ring-4 focus:ring-cyan-400/40">
+      🎤 Encender Micrófono
+    </button>
+    <div id="mic-error" class="hidden mt-4 text-rose-400 text-sm font-semibold" role="alert"></div>
+  </div>
+</div>
+
+<!-- MONITOR -->
+<div id="screen-monitor" class="screen screen-hidden flex-1 w-full max-w-xl flex flex-col items-center justify-center z-20 px-4">
+  <div class="w-full bg-blue-950/60 border-2 border-cyan-500/25 p-5 md:p-6 rounded-3xl shadow-2xl shadow-cyan-900/20 backdrop-blur-md flex flex-col items-center space-y-5">
+    <div class="text-center w-full">
+      <span class="text-xs uppercase tracking-widest text-cyan-400/80 font-semibold block mb-1">Volumen actual</span>
+      <span id="txt-status" class="text-xl font-bold text-emerald-400">Tu voz está perfecta 😊</span>
+    </div>
+
+    <!-- Medidor de agua -->
+    <div class="relative w-20 h-56 md:w-24 md:h-64 bg-blue-900/50 rounded-full border-2 border-cyan-600/30 overflow-hidden flex items-end shadow-inner shadow-cyan-900/20">
+      <div id="volume-bar" class="relative w-full bg-gradient-to-t from-cyan-600 via-emerald-400 to-rose-400 transition-all duration-75 rounded-b-full" style="height:0%"></div>
+      <div id="threshold-line" class="absolute inset-x-0 border-t-2 border-dashed border-rose-500/70 z-10 pointer-events-none transition-all duration-200" style="bottom:70%">
+        <span class="absolute -top-5 right-1 bg-rose-600/90 text-[10px] px-1.5 py-0.5 rounded font-bold text-white shadow">Límite 🔊</span>
+      </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="w-full bg-blue-900/30 p-4 rounded-2xl border border-blue-800/50">
+      <div class="flex justify-between items-center mb-2">
+        <label for="threshold-slider" class="text-sm font-medium text-cyan-300">Sensibilidad (umbral):</label>
+        <span id="threshold-val" class="text-sm font-bold text-cyan-400">70%</span>
+      </div>
+      <input type="range" id="threshold-slider" min="10" max="100" value="70" class="w-full h-2 bg-blue-950 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40">
+      <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+        <span>Muy despacio</span>
+        <span>Soporta gritos</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTA -->
+<div id="screen-alert" class="screen screen-hidden flex-1 w-full max-w-xl flex flex-col items-center justify-center z-20 px-4">
+  <div class="bg-blue-950/90 border-2 border-yellow-400/60 p-8 rounded-3xl text-center shadow-2xl shadow-yellow-900/20 backdrop-blur-md flex flex-col items-center space-y-5 w-full">
+    <div id="fish-container" class="w-36 h-36 md:w-44 md:h-44 fish-scared flex items-center justify-center">
+      <svg viewBox="0 0 200 200" class="w-full h-full" aria-hidden="true">
+        <!-- Cuerpo -->
+        <path d="M45,102 C55,58 120,48 155,82 C170,95 170,105 155,118 C120,152 55,142 45,102 Z" fill="#FBBF24" stroke="#D97706" stroke-width="5"/>
+        <!-- Cola -->
+        <path d="M45,102 L12,70 L5,102 L12,134 Z" fill="#EF4444" stroke="#B91C1C" stroke-width="5" stroke-linejoin="round"/>
+        <!-- Aleta superior -->
+        <path d="M95,66 C105,36 135,40 130,57 Z" fill="#3B82F6" stroke="#1D4ED8" stroke-width="4" stroke-linejoin="round"/>
+        <!-- Aleta inferior -->
+        <path d="M95,138 C105,164 130,158 130,143 Z" fill="#3B82F6" stroke="#1D4ED8" stroke-width="4" stroke-linejoin="round"/>
+        <!-- Aleta pectoral -->
+        <path d="M120,90 Q135,110 115,115 Q110,105 120,90 Z" fill="#3B82F6" stroke="#1D4ED8" stroke-width="3"/>
+        <!-- Ojo -->
+        <circle cx="132" cy="85" r="15" fill="white" stroke="#1F2937" stroke-width="3"/>
+        <circle cx="136" cy="85" r="7" fill="#1F2937"/>
+        <circle cx="134" cy="81" r="3" fill="white"/>
+        <!-- Mejilla -->
+        <ellipse cx="125" cy="112" rx="10" ry="8" fill="#F87171" opacity="0.5"/>
+        <!-- Boca de "O" asustado -->
+        <ellipse cx="158" cy="100" rx="8" ry="10" fill="#1E3A8A" stroke="#60A5FA" stroke-width="3"/>
+      </svg>
+    </div>
+    <div class="space-y-2">
+      <h3 class="text-3xl font-extrabold text-yellow-300">¡Shhh! Muy fuerte</h3>
+      <p class="text-slate-300/80 text-sm max-w-xs mx-auto leading-relaxed">
+        El pececito se asustó. Hagamos silencio juntos para que vuelva a nadar.
+      </p>
+    </div>
+    <div class="flex items-center gap-4 justify-center">
+      <div id="countdown-bubbles" class="flex gap-1.5"></div>
+      <span id="countdown-number" class="text-5xl font-black text-cyan-300 tabular-nums">5</span>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="w-full text-center text-xs text-cyan-200/30 z-20 mt-2">
+  Herramienta de apoyo fonoaudiológico • Acceso libre y gratuito
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const screenStart = $('screen-start');
+const screenMonitor = $('screen-monitor');
+const screenAlert = $('screen-alert');
+const btnStart = $('btn-start');
+const micError = $('mic-error');
+const thresholdSlider = $('threshold-slider');
+const thresholdVal = $('threshold-val');
+const thresholdLine = $('threshold-line');
+const volumeBar = $('volume-bar');
+const txtStatus = $('txt-status');
+const countdownNumber = $('countdown-number');
+const countdownBubbles = $('countdown-bubbles');
+const bubbleContainer = $('bubble-container');
+
+let audioCtx, analyser, mediaStream;
+let currentVolume = 0;
+let threshold = 70;
+let isAlert = false;
+let alertTimer = null;
+let countdown = 5;
+let bubbleInterval = null;
+let animFrame = null;
+let isPageVisible = true;
+
+// --- Screen transitions ---
+function showScreen(screen) {
+  [screenStart,screenMonitor,screenAlert].forEach(s => {
+    s.classList.remove('screen-visible','screen-hidden');
+    s.classList.add('screen-hidden');
+  });
+  screen.classList.remove('screen-hidden');
+  screen.classList.add('screen-visible');
+}
+
+// --- Umbral slider ---
+thresholdSlider.addEventListener('input', () => {
+  threshold = parseInt(thresholdSlider.value);
+  thresholdVal.textContent = threshold + '%';
+  thresholdLine.style.bottom = threshold + '%';
+});
+thresholdLine.style.bottom = threshold + '%';
+
+// --- Burbujas decorativas ---
+function makeBubble() {
+  if (!isPageVisible) return;
+  const el = document.createElement('div');
+  el.className = 'bubble';
+  const size = 8 + Math.random() * 28;
+  el.style.cssText = `
+    width:${size}px;height:${size}px;
+    left:${Math.random()*100}%;
+    --drift:${(Math.random()-0.5)*80}px;
+    animation:floatUp ${4+Math.random()*5}s linear forwards;
+    animation-delay:${Math.random()*2}s;
+  `;
+  bubbleContainer.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function startBubbles() {
+  if (bubbleInterval) return;
+  makeBubble(); // first one immediately
+  bubbleInterval = setInterval(makeBubble, 600);
+}
+function stopBubbles() {
+  clearInterval(bubbleInterval);
+  bubbleInterval = null;
+}
+
+// Page Visibility API — pausa burbujas si la pestaña no está visible
+document.addEventListener('visibilitychange', () => {
+  isPageVisible = !document.hidden;
+  if (document.hidden) stopBubbles();
+  else startBubbles();
+});
+
+// --- Audio ---
+btnStart.addEventListener('click', async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    micError.classList.add('hidden');
+    startMonitor(stream);
+    showScreen(screenMonitor);
+  } catch (err) {
+    micError.textContent = 'No pudimos acceder al micrófono. Revisá los permisos del navegador.';
+    micError.classList.remove('hidden');
+  }
+});
+
+function startMonitor(stream) {
+  mediaStream = stream;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  const bufLen = analyser.frequencyBinCount;
+  const data = new Uint8Array(bufLen);
+  const src = audioCtx.createMediaStreamSource(stream);
+  src.connect(analyser);
+
+  (function tick() {
+    if (!isAlert) {
+      analyser.getByteFrequencyData(data);
+      // RMS-like promedio, escalado 0-100
+      let sum = 0;
+      for (let i = 0; i < bufLen; i++) sum += data[i];
+      currentVolume = Math.min(100, Math.round(sum / bufLen));
+
+      volumeBar.style.height = currentVolume + '%';
+
+      if (currentVolume >= threshold) {
+        triggerAlert();
+      } else if (currentVolume > threshold * 0.75) {
+        txtStatus.textContent = 'Cuidado, un poco más suave 😮';
+        txtStatus.className = 'text-xl font-bold text-yellow-400';
+      } else {
+        txtStatus.textContent = 'Tu voz está perfecta 😊';
+        txtStatus.className = 'text-xl font-bold text-emerald-400';
+      }
+    }
+    animFrame = requestAnimationFrame(tick);
+  })();
+
+  startBubbles();
+}
+
+// --- Alerta ---
+function triggerAlert() {
+  if (isAlert) return;
+  isAlert = true;
+  showScreen(screenAlert);
+  countdown = 5;
+  renderCountdown();
+
+  // Ráfaga de burbujas
+  for (let i = 0; i < 20; i++) setTimeout(makeBubble, i * 80);
+
+  alertTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      clearInterval(alertTimer);
+      alertTimer = null;
+      resetMonitor();
+    } else {
+      renderCountdown();
+    }
+  }, 1000);
+}
+
+function renderCountdown() {
+  countdownNumber.textContent = countdown;
+  countdownBubbles.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const b = document.createElement('div');
+    b.className = `w-7 h-7 md:w-8 md:h-8 rounded-full border-2 transition-all duration-300 ${
+      i < countdown
+        ? 'bg-cyan-400/40 border-cyan-300 animate-pulse'
+        : 'bg-transparent border-blue-800/50'
+    }`;
+    countdownBubbles.appendChild(b);
+  }
+}
+
+function resetMonitor() {
+  isAlert = false;
+  showScreen(screenMonitor);
+  currentVolume = 0;
+  volumeBar.style.height = '0%';
+}
+</script>
+</body>
+</html>
