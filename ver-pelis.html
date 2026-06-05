@@ -98,7 +98,6 @@ const TMDB = {
 // ─── Providers ──────────────────────────────────────────────
 // TMDB ID → iframe URL. Providers verified to return 200 + no XFO.
 const PROVIDERS = [
-  { id: 'vidfast',  name: 'VidFast', movie: id => `https://vidfast.pro/movie/${id}`,                      tv: (id,s,e) => `https://vidfast.pro/tv/${id}/${s}/${e}` },
   { id: 'videasy',  name: 'Videasy', movie: id => `https://player.videasy.net/movie/${id}`,               tv: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}` },
   { id: 'streamsrc',name: 'StreamSrc',movie: id => `https://streamsrc.cc/watch/movie/${id}`,              tv: (id,s,e) => `https://streamsrc.cc/watch/series/${id}?s=${s}&e=${e}` },
   { id: 'autoembed',name: 'AutoEmbed',movie: id => `https://autoembed.co/movie/tmdb/${id}`,              tv: (id,s,e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}` },
@@ -409,6 +408,7 @@ function loadStream(id, type, season, episode) {
   const iframe = document.createElement('iframe')
   iframe.allow = 'autoplay; fullscreen; picture-in-picture'
   iframe.allowFullscreen = true
+  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals')
   iframe.onload = () => {
     const loading = document.getElementById('player-loading')
     if (loading) loading.remove()
