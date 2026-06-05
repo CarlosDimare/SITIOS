@@ -391,10 +391,10 @@ function drawFish(f) {
     // Panza clara
     ctx.beginPath(); ctx.arc(0, s * .06, s * .24, .2, Math.PI - .2); ctx.fillStyle = f.accent; ctx.globalAlpha = .25; ctx.fill(); ctx.globalAlpha = 1;
     // Espinas pequeñas por todo el cuerpo
-    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5;
-    for (let i = 0; i < 40; i++) {
-      const a = (i / 40) * Math.PI * 2 + Math.sin(i * 3) * .2;
-      const r1 = s * .3, r2 = s * .33 + Math.sin(time * 2 + i * .5) * .015;
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 2;
+    for (let i = 0; i < 50; i++) {
+      const a = (i / 50) * Math.PI * 2 + Math.sin(i * 3) * .25;
+      const r1 = s * .28, r2 = s * .38 + Math.sin(time * 2 + i * .5) * .02;
       ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke();
     }
     // Aleta pectoral pequeña
@@ -465,7 +465,7 @@ function drawFish(f) {
     // Patron de escudos (5 hexagonos centrales + anillo)
     ctx.fillStyle = '#3A8A3A'; ctx.strokeStyle = '#1A5A1A'; ctx.lineWidth = 1.2;
     // Escudo central
-    const drawScute = (cx, cy, w, h) => { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 - Math.PI/6; ctx.lineTo(cx + Math.cos(a) * w, cy + Math.sin(a) * h); } ctx.closePath(); ctx.fill(); ctx.stroke(); };
+    const drawScute = (cx, cy, w, h) => { ctx.beginPath(); const a1 = -Math.PI/6; ctx.moveTo(cx + Math.cos(a1) * w, cy + Math.sin(a1) * h); for (let k = 1; k < 6; k++) { const a = (k / 6) * Math.PI * 2 - Math.PI/6; ctx.lineTo(cx + Math.cos(a) * w, cy + Math.sin(a) * h); } ctx.closePath(); ctx.fill(); ctx.stroke(); };
     drawScute(0, -s * .02, s * .1, s * .08);
     drawScute(-s * .15, -s * .02, s * .08, s * .06);
     drawScute(s * .15, -s * .02, s * .08, s * .06);
@@ -502,7 +502,9 @@ function drawFish(f) {
     const walk = Math.sin(time * .08 + f.phase) * s * .05;
     // Caparazon hexagonal
     ctx.beginPath();
-    for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 - Math.PI/2; const r = k % 2 === 0 ? s * .28 : s * .22; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    const a0 = -Math.PI / 2; const r0 = s * .28;
+    ctx.moveTo(Math.cos(a0) * r0, Math.sin(a0) * r0);
+    for (let k = 1; k < 6; k++) { const a = (k / 6) * Math.PI * 2 - Math.PI/2; const r = k % 2 === 0 ? s * .28 : s * .22; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
     ctx.closePath(); ctx.fillStyle = '#DC2626'; ctx.fill(); ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 2; ctx.stroke();
     // Detalle caparazon
     ctx.beginPath(); ctx.ellipse(0, s * .02, s * .12, s * .08, 0, 0, Math.PI * 2); ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 1; ctx.globalAlpha = .4; ctx.stroke(); ctx.globalAlpha = 1;
@@ -556,35 +558,36 @@ function drawFish(f) {
     const pulse = 1 + Math.sin(time * .04 + f.phase) * .08;
     // Campana con borde lobulado
     ctx.beginPath(); ctx.arc(0, -s * .02, s * .28 * pulse, 0, Math.PI * 2);
-    ctx.fillStyle = f.body; ctx.globalAlpha = .2; ctx.fill(); ctx.globalAlpha = 1;
-    ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = f.body; ctx.globalAlpha = .4; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 2.5; ctx.globalAlpha = .6; ctx.stroke(); ctx.globalAlpha = 1;
     // Canales radiales (lineas desde el centro)
-    ctx.strokeStyle = f.fin; ctx.lineWidth = 1; ctx.globalAlpha = .2;
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.globalAlpha = .35;
     for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * s * .24 * pulse, Math.sin(a) * s * .24 * pulse); ctx.stroke(); }
+    ctx.globalAlpha = 1;
     // Boca/brazos orales (centro)
-    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.globalAlpha = .3;
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.globalAlpha = .45;
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
       ctx.beginPath(); ctx.moveTo(0, s * .02); let ox = 0, oy = s * .02;
-      for (let t = 0; t < s * .35; t += 4) { ox += Math.sin((t + time * .015) * .15 + i * 2) * 3; oy += 3; ctx.lineTo(ox, oy); }
+      for (let t = 0; t < s * .4; t += 4) { ox += Math.sin((t + time * .015) * .15 + i * 2) * 3; oy += 3; ctx.lineTo(ox, oy); }
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
     // Tentaculos largos y finos
-    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.2; ctx.globalAlpha = .25;
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.globalAlpha = .4;
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       const x0 = Math.cos(angle) * s * .26 * pulse, y0 = Math.sin(angle) * s * .25 * pulse;
       ctx.beginPath(); ctx.moveTo(x0, y0);
       let x = x0, y = y0;
-      const len = s * (.5 + ((i * 137 + f.phase * 10) % 100) / 250);
-      for (let t = 0; t < len; t += 4) { x += Math.sin((t + time * .025) * .12 + i * 1.5) * (1.5 + Math.sin(i) * .5); y += 3.5; ctx.lineTo(x, y); }
+      const len = s * (.6 + ((i * 137 + f.phase * 10) % 100) / 200);
+      for (let t = 0; t < len; t += 3) { x += Math.sin((t + time * .025) * .12 + i * 1.5) * (2 + Math.sin(i) * .5); y += 4; ctx.lineTo(x, y); }
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
     // Puntos bioluminiscentes
-    ctx.fillStyle = 'white'; ctx.globalAlpha = .2;
-    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.sin(time * .02 + i) * .2; ctx.beginPath(); ctx.arc(Math.cos(a) * s * .16 * pulse, Math.sin(a) * s * .14 * pulse, s * .018, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'white'; ctx.globalAlpha = .35;
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.sin(time * .02 + i) * .2; ctx.beginPath(); ctx.arc(Math.cos(a) * s * .16 * pulse, Math.sin(a) * s * .14 * pulse, s * .025, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
   ctx.restore();
