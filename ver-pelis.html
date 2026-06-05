@@ -245,20 +245,24 @@ function switchProvider(providerId) {
 }
 
 function loadStream(id, type, season, episode) {
-  playerWrap.innerHTML = '<div class="loading" id="player-loading"><div class="spinner"></div>Cargando reproductor...</div>'
   const url = type === 'movie'
     ? currentProvider.movie(id)
     : currentProvider.tv(id, season || 1, episode || 1)
+  // Mostrar spinner mientras carga
+  playerWrap.innerHTML = '<div class="loading" id="player-loading"><div class="spinner"></div>Cargando reproductor...</div>'
   const iframe = document.createElement('iframe')
   iframe.allow = 'autoplay; fullscreen; picture-in-picture'
   iframe.allowFullscreen = true
-  // sandbox: permite scripts y mismo origen pero NO popups ni navegación del top
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups-to-escape-sandbox')
-  iframe.setAttribute('loading', 'lazy')
-  iframe.onload = () => { playerWrap.innerHTML = ''; playerWrap.appendChild(iframe) }
-  iframe.onerror = () => { playerWrap.innerHTML = '<div class="error">Error al cargar. Probá otro provider.</div>' }
+  iframe.onload = () => {
+    // Quitar spinner cuando cargue (nunca tocar el iframe)
+    const loading = document.getElementById('player-loading')
+    if (loading) loading.remove()
+  }
+  iframe.onerror = () => {
+    playerWrap.innerHTML = '<div class="error">Error al cargar. Probá otro provider.</div>'
+  }
   iframe.src = url
-  setTimeout(() => { if (!iframe.parentNode) { playerWrap.innerHTML = ''; playerWrap.appendChild(iframe) } }, 12000)
+  playerWrap.appendChild(iframe)
 }
 
 // ─── Categories ─────────────────────────────────────────────
