@@ -218,13 +218,13 @@ let fish = [], bgBubbles = [], lightRays = [];
 let fishScared = false;
 
 const SPECIES = [
-  { name:'fish',    speed: .9, size: [30,65] },
-  { name:'angelfish',speed: .75, size: [26,55] },
-  { name:'puffer',  speed: .6, size: [24,50] },
-  { name:'shark',   speed: 1.1, size: [55,100] },
-  { name:'turtle',  speed: .4, size: [40,75] },
-  { name:'crab',    speed: .5, size: [18,35] },
-  { name:'jelly',   speed: .45, size: [28,58] },
+  { name:'fish',    speed: .9, size: [60,130] },
+  { name:'angelfish',speed: .75, size: [52,110] },
+  { name:'puffer',  speed: .6, size: [48,100] },
+  { name:'shark',   speed: 1.1, size: [110,200] },
+  { name:'turtle',  speed: .4, size: [80,150] },
+  { name:'crab',    speed: .5, size: [36,70] },
+  { name:'jelly',   speed: .45, size: [56,116] },
 ];
 
 const PALETTE = {
@@ -281,138 +281,284 @@ function drawFish(f) {
   ctx.translate(0, bob);
 
   if (f.species === 0) {
-    // Pez comun
-    ctx.beginPath(); ctx.ellipse(0, 0, s * .5, s * .2, 0, 0, Math.PI * 2); ctx.fillStyle = f.body; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-s * .45, 0); ctx.lineTo(-s * .75, -s * .22 + wag * s * .3); ctx.lineTo(-s * .75, s * .22 + wag * s * .3); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(s * .05, -s * .18); ctx.lineTo(s * .15, -s * .38); ctx.lineTo(s * .3, -s * .2); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .3, -s * .05, s * .08, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .33, -s * .05, s * .04, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .35, -s * .08, s * .018, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
+    // ------------------- PEZ COMUN (realista) -------------------
+    // Cuerpo fusiforme con curvas bezier
+    ctx.beginPath(); ctx.moveTo(s * .55, 0);
+    ctx.bezierCurveTo(s * .5, -s * .22, s * .1, -s * .28, -s * .3, -s * .18);
+    ctx.quadraticCurveTo(-s * .55, -s * .06, -s * .65, 0);
+    ctx.quadraticCurveTo(-s * .55, s * .06, -s * .3, s * .18);
+    ctx.bezierCurveTo(s * .1, s * .28, s * .5, s * .22, s * .55, 0);
+    const bg = ctx.createLinearGradient(0, -s * .2, 0, s * .2);
+    bg.addColorStop(0, f.body); bg.addColorStop(.5, f.body); bg.addColorStop(1, f.fin);
+    ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
+    // Cola ahorquillada
+    ctx.beginPath(); ctx.moveTo(-s * .65, 0);
+    ctx.quadraticCurveTo(-s * .85, -s * .3 + wag * s * .3, -s * .9, -s * .25 + wag * s * .2);
+    ctx.lineTo(-s * .7, 0);
+    ctx.lineTo(-s * .9, s * .25 + wag * s * .2);
+    ctx.quadraticCurveTo(-s * .85, s * .3 + wag * s * .3, -s * .65, 0);
+    ctx.fillStyle = f.fin; ctx.fill();
+    // Aleta dorsal
+    ctx.beginPath(); ctx.moveTo(-s * .05, -s * .25); ctx.quadraticCurveTo(s * .1, -s * .42, s * .25, -s * .25); ctx.fillStyle = f.fin; ctx.fill();
+    // Aleta anal
+    ctx.beginPath(); ctx.moveTo(-s * .2, s * .2); ctx.quadraticCurveTo(-s * .05, s * .38, s * .1, s * .22); ctx.fillStyle = f.fin; ctx.fill();
+    // Aleta pectoral
+    ctx.beginPath(); ctx.moveTo(s * .15, s * .12); ctx.quadraticCurveTo(s * .1, s * .28, s * .28, s * .2); ctx.closePath(); ctx.fillStyle = f.accent; ctx.globalAlpha = .6; ctx.fill(); ctx.globalAlpha = 1;
+    // Linea de la agalla
+    ctx.beginPath(); ctx.arc(s * .22, -s * .02, s * .12, -1.2, 1.2); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
+    // Escamas (patron de circulos pequeños)
+    ctx.strokeStyle = f.accent; ctx.lineWidth = .8; ctx.globalAlpha = .25;
+    for (let i = -3; i < 5; i++) { for (let j = -1; j < 2; j++) { const ex = i * s * .1 + s * .02, ey = j * s * .08; ctx.beginPath(); ctx.arc(ex, ey, s * .04, 0, Math.PI); ctx.stroke(); } }
+    ctx.globalAlpha = 1;
+    // Ojo
+    ctx.beginPath(); ctx.arc(s * .35, -s * .06, s * .07, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(s * .36, -s * .06, s * .045, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .38, -s * .08, s * .018, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
+    // Boca
+    ctx.beginPath(); ctx.arc(s * .54, s * .02, s * .03, 0, Math.PI); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.2; ctx.stroke();
 
   } else if (f.species === 1) {
-    // Pez angel
-    ctx.beginPath(); ctx.moveTo(0, -s * .35); ctx.quadraticCurveTo(s * .25, -s * .15, s * .3, 0); ctx.quadraticCurveTo(s * .25, s * .15, 0, s * .35); ctx.quadraticCurveTo(-s * .25, s * .15, -s * .3, 0); ctx.quadraticCurveTo(-s * .25, -s * .15, 0, -s * .35); ctx.fillStyle = f.body; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-s * .28, 0); ctx.lineTo(-s * .7, -s * .3 + wag * s * .3); ctx.lineTo(-s * .7, s * .3 + wag * s * .3); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
-    ctx.fillStyle = f.accent; ctx.globalAlpha = .4; ctx.fillRect(-s * .06, -s * .32, s * .12, s * .64); ctx.globalAlpha = 1;
-    ctx.beginPath(); ctx.arc(s * .18, -s * .04, s * .07, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .21, -s * .04, s * .035, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    // ------------------- PEZ ANGEL (realista) -------------------
+    // Cuerpo discoidal alto
+    ctx.beginPath(); ctx.moveTo(0, -s * .4);
+    ctx.quadraticCurveTo(s * .32, -s * .2, s * .35, 0);
+    ctx.quadraticCurveTo(s * .32, s * .25, 0, s * .4);
+    ctx.quadraticCurveTo(-s * .3, s * .25, -s * .35, 0);
+    ctx.quadraticCurveTo(-s * .3, -s * .2, 0, -s * .4);
+    const bg = ctx.createLinearGradient(0, -s * .3, 0, s * .3);
+    bg.addColorStop(0, f.body); bg.addColorStop(1, f.fin);
+    ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.stroke();
+    // Aleta dorsal grande y triangular
+    const dfH = s * .28 + Math.sin(time * .03 + f.phase) * s * .04;
+    ctx.beginPath(); ctx.moveTo(-s * .08, -s * .38); ctx.quadraticCurveTo(s * .1, -s * .38 - dfH, s * .32, -s * .28); ctx.fillStyle = f.fin; ctx.fill();
+    // Aleta anal grande
+    const afH = s * .26 + Math.sin(time * .03 + f.phase + 1) * s * .04;
+    ctx.beginPath(); ctx.moveTo(-s * .08, s * .38); ctx.quadraticCurveTo(s * .1, s * .38 + afH, s * .32, s * .28); ctx.fillStyle = f.fin; ctx.fill();
+    // Aleta caudal (cola)
+    ctx.beginPath(); ctx.moveTo(-s * .35, 0); ctx.quadraticCurveTo(-s * .55, -s * .3 + wag * s * .2, -s * .6, -s * .28 + wag * s * .2);
+    ctx.lineTo(-s * .42, 0); ctx.lineTo(-s * .6, s * .28 + wag * s * .2);
+    ctx.quadraticCurveTo(-s * .55, s * .3 + wag * s * .2, -s * .35, 0);
+    ctx.fillStyle = f.fin; ctx.fill();
+    // Aletas pelvicas (hilos)
+    ctx.strokeStyle = f.accent; ctx.lineWidth = 1.5; ctx.globalAlpha = .5;
+    ctx.beginPath(); ctx.moveTo(-s * .05, s * .3); ctx.quadraticCurveTo(s * .02, s * .48, s * .06, s * .55); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s * .05, s * .3); ctx.quadraticCurveTo(s * .1, s * .46, s * .12, s * .5); ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Rayas verticales
+    ctx.strokeStyle = f.accent; ctx.lineWidth = 3; ctx.globalAlpha = .25;
+    for (let i = -1; i < 3; i++) { const rx = i * s * .1; ctx.beginPath(); ctx.moveTo(rx, -s * .25); ctx.lineTo(rx, s * .25); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    // Ojo
+    ctx.beginPath(); ctx.arc(s * .2, -s * .06, s * .07, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(s * .21, -s * .06, s * .04, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .23, -s * .08, s * .015, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
+    // Boca pequeña
+    ctx.beginPath(); ctx.arc(s * .34, s * .02, s * .02, 0, Math.PI); ctx.strokeStyle = f.fin; ctx.lineWidth = 1; ctx.stroke();
 
   } else if (f.species === 2) {
-    // Pez globo
-    ctx.beginPath(); ctx.arc(0, 0, s * .3, 0, Math.PI * 2); ctx.fillStyle = f.body; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.stroke();
-    const spk = 8 + Math.floor(Math.random() * 3); ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5;
-    for (let i = 0; i < spk; i++) { const a = (i / spk) * Math.PI * 2 + 1; const r1 = s * .3, r2 = s * .36 + Math.sin(time * 2 + i) * .02; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(-s * .28, 0); ctx.lineTo(-s * .6, -s * .15 + wag * s * .2); ctx.lineTo(-s * .6, s * .15 + wag * s * .2); ctx.closePath(); ctx.fillStyle = f.fin; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .15, -s * .06, s * .09, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .18, -s * .06, s * .045, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .2, -s * .1, s * .02, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-    ctx.beginPath(); ctx.arc(0, s * .08, s * .18, 0, 3.15); ctx.fillStyle = f.accent; ctx.globalAlpha = .3; ctx.fill(); ctx.globalAlpha = 1;
+    // ------------------- PEZ GLOBO (realista) -------------------
+    // Cuerpo redondo
+    ctx.beginPath(); ctx.arc(0, 0, s * .32, 0, Math.PI * 2);
+    const bg = ctx.createRadialGradient(0, -s * .06, s * .05, 0, 0, s * .32);
+    bg.addColorStop(0, f.body); bg.addColorStop(.7, f.body); bg.addColorStop(1, f.fin);
+    ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.stroke();
+    // Panza clara
+    ctx.beginPath(); ctx.arc(0, s * .06, s * .24, .2, Math.PI - .2); ctx.fillStyle = f.accent; ctx.globalAlpha = .25; ctx.fill(); ctx.globalAlpha = 1;
+    // Espinas pequeñas por todo el cuerpo
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * Math.PI * 2 + Math.sin(i * 3) * .2;
+      const r1 = s * .3, r2 = s * .33 + Math.sin(time * 2 + i * .5) * .015;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke();
+    }
+    // Aleta pectoral pequeña
+    ctx.beginPath(); ctx.moveTo(-s * .05, s * .15); ctx.quadraticCurveTo(-s * .2, s * .28, -s * .12, s * .12); ctx.fillStyle = f.fin; ctx.fill();
+    // Cola pequeña
+    ctx.beginPath(); ctx.moveTo(-s * .3, 0); ctx.quadraticCurveTo(-s * .45, -s * .1 + wag * s * .2, -s * .48, -s * .08 + wag * s * .15);
+    ctx.lineTo(-s * .35, 0); ctx.lineTo(-s * .48, s * .08 + wag * s * .15);
+    ctx.quadraticCurveTo(-s * .45, s * .1 + wag * s * .2, -s * .3, 0);
+    ctx.fillStyle = f.fin; ctx.fill();
+    // Ojos grandes
+    ctx.beginPath(); ctx.arc(s * .18, -s * .12, s * .1, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(s * .19, -s * .12, s * .06, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .21, -s * .14, s * .025, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
+    // Boca pequeña hacia arriba
+    ctx.beginPath(); ctx.arc(s * .28, s * .01, s * .03, -.3, Math.PI + .3); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.stroke();
 
   } else if (f.species === 3) {
-    // TIBURON
-    const bodyGrad = ctx.createLinearGradient(0, -s * .25, 0, s * .05);
-    bodyGrad.addColorStop(0, '#94A3B8'); bodyGrad.addColorStop(1, '#64748B');
-    // Cuerpo torpedo
-    ctx.beginPath(); ctx.moveTo(s * .6, 0);
-    ctx.quadraticCurveTo(s * .5, -s * .22, 0, -s * .18);
-    ctx.quadraticCurveTo(-s * .5, -s * .18, -s * .7, s * .02);
-    ctx.quadraticCurveTo(-s * .5, s * .22, 0, s * .18);
-    ctx.quadraticCurveTo(s * .5, s * .22, s * .6, 0);
-    ctx.fillStyle = bodyGrad; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 2; ctx.stroke();
-    // Hocico punteagudo
-    ctx.beginPath(); ctx.moveTo(s * .6, -s * .03); ctx.lineTo(s * .8, -s * .02); ctx.lineTo(s * .6, s * .03); ctx.closePath();
-    ctx.fillStyle = '#94A3B8'; ctx.fill();
+    // ------------------- TIBURON (realista) -------------------
+    // Cuerpo hidrodinámico
+    ctx.beginPath(); ctx.moveTo(s * .65, 0);
+    ctx.bezierCurveTo(s * .55, -s * .16, s * .2, -s * .2, -s * .1, -s * .18);
+    ctx.quadraticCurveTo(-s * .4, -s * .14, -s * .65, -s * .02);
+    ctx.quadraticCurveTo(-s * .4, s * .14, -s * .1, s * .18);
+    ctx.bezierCurveTo(s * .2, s * .2, s * .55, s * .16, s * .65, 0);
+    const bg = ctx.createLinearGradient(0, -s * .2, 0, s * .15);
+    bg.addColorStop(0, '#94A3B8'); bg.addColorStop(.5, '#74829C'); bg.addColorStop(1, '#556578');
+    ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 2; ctx.stroke();
+    // Hocico
+    ctx.beginPath(); ctx.moveTo(s * .65, -s * .03); ctx.quadraticCurveTo(s * .82, -s * .01, s * .65, s * .03); ctx.closePath(); ctx.fillStyle = '#A0B4C8'; ctx.fill();
     // Aleta dorsal grande
-    ctx.beginPath(); ctx.moveTo(-s * .05, -s * .17); ctx.lineTo(s * .08, -s * .42); ctx.lineTo(s * .22, -s * .18); ctx.closePath();
+    ctx.beginPath(); ctx.moveTo(s * .02, -s * .18); ctx.quadraticCurveTo(s * .1, -s * .48, s * .28, -s * .22); ctx.closePath();
     ctx.fillStyle = '#64748B'; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Segunda aleta dorsal (pequeña)
+    ctx.beginPath(); ctx.moveTo(-s * .25, -s * .15); ctx.lineTo(-s * .2, -s * .28); ctx.lineTo(-s * .15, -s * .14); ctx.closePath(); ctx.fillStyle = '#64748B'; ctx.fill();
     // Aleta pectoral
-    ctx.beginPath(); ctx.moveTo(s * .15, s * .15); ctx.lineTo(s * .3, s * .35); ctx.lineTo(s * .25, s * .12); ctx.closePath();
-    ctx.fillStyle = '#64748B'; ctx.fill();
-    // Cola
-    ctx.beginPath(); ctx.moveTo(-s * .7, 0); ctx.lineTo(-s * .95, -s * .2 + wag * s * .15); ctx.lineTo(-s * .98, s * .05); ctx.lineTo(-s * .95, s * .2 + wag * s * .15); ctx.closePath();
+    ctx.beginPath(); ctx.moveTo(s * .15, s * .12); ctx.quadraticCurveTo(s * .1, s * .38, s * .35, s * .28); ctx.closePath(); ctx.fillStyle = '#64748B'; ctx.fill();
+    // Aleta anal
+    ctx.beginPath(); ctx.moveTo(-s * .2, s * .15); ctx.lineTo(-s * .15, s * .26); ctx.lineTo(-s * .1, s * .14); ctx.closePath(); ctx.fillStyle = '#64748B'; ctx.fill();
+    // Cola heterocerca (lóbulo superior más largo)
+    ctx.beginPath(); ctx.moveTo(-s * .65, 0);
+    ctx.quadraticCurveTo(-s * .85, -s * .05, -s * .95, -s * .15 + wag * s * .1);
+    ctx.lineTo(-s * 1.0, -s * .18 + wag * s * .1);
+    ctx.lineTo(-s * .85, s * .02);
+    ctx.lineTo(-s * .9, s * .12 + wag * s * .1);
+    ctx.lineTo(-s * .7, 0);
     ctx.fillStyle = '#64748B'; ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Ojo pequeño y frio
-    ctx.beginPath(); ctx.arc(s * .38, -s * .06, s * .04, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .38, -s * .06, s * .015, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-    // Dientes (zigzag)
-    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let i = 0; i < 5; i++) { const x = s * .65 + i * s * .04; ctx.lineTo(x, s * .02); ctx.lineTo(x + s * .015, s * .06); }
-    ctx.stroke();
+    // 5 ranuras branquiales
+    ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.globalAlpha = .5;
+    for (let i = 0; i < 5; i++) { const gx = s * .28 - i * s * .05; ctx.beginPath(); ctx.arc(gx, s * .02, s * .03 + i * .005, -.6, .6); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    // Ojo
+    ctx.beginPath(); ctx.arc(s * .45, -s * .07, s * .035, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s * .45, -s * .07, s * .015, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
+    // Membrana nictitante (linea sobre ojo)
+    ctx.beginPath(); ctx.arc(s * .45, -s * .1, s * .04, Math.PI, Math.PI * 2); ctx.strokeStyle = '#64748B'; ctx.lineWidth = 1; ctx.stroke();
+    // Dientes triangulares
+    ctx.fillStyle = 'white'; ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = .5;
+    for (let i = 0; i < 7; i++) { const tx = s * .58 + i * s * .03; ctx.beginPath(); ctx.moveTo(tx, s * .02); ctx.lineTo(tx + s * .015, s * .07); ctx.lineTo(tx + s * .025, s * .02); ctx.closePath(); ctx.fill(); ctx.stroke(); }
 
   } else if (f.species === 4) {
-    // TORTUGA
-    // Caparazon
-    ctx.beginPath(); ctx.ellipse(0, -s * .02, s * .4, s * .32, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#22C55E'; ctx.fill(); ctx.strokeStyle = '#16A34A'; ctx.lineWidth = 2.5; ctx.stroke();
-    // Patron hexagonos
-    ctx.strokeStyle = '#15803D'; ctx.lineWidth = 1.5;
-    for (let i = -1; i <= 1; i++) {
-      for (let j = -1; j <= 0; j++) {
-        const cx = i * s * .18, cy = j * s * .14 + s * .02;
-        ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; ctx.lineTo(cx + Math.cos(a) * s * .08, cy + Math.sin(a) * s * .07); } ctx.closePath(); ctx.stroke();
-      }
-    }
+    // ------------------- TORTUGA MARINA (realista) -------------------
+    // Caparazon ovalado con domo
+    ctx.beginPath(); ctx.ellipse(0, -s * .03, s * .38, s * .3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#2D6A2D'; ctx.fill(); ctx.strokeStyle = '#1A4A1A'; ctx.lineWidth = 3; ctx.stroke();
+    // Borde del caparazon (ribete)
+    ctx.beginPath(); ctx.ellipse(0, -s * .03, s * .36, s * .28, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = '#4ADE80'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Patron de escudos (5 hexagonos centrales + anillo)
+    ctx.fillStyle = '#3A8A3A'; ctx.strokeStyle = '#1A5A1A'; ctx.lineWidth = 1.2;
+    // Escudo central
+    const drawScute = (cx, cy, w, h) => { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 - Math.PI/6; ctx.lineTo(cx + Math.cos(a) * w, cy + Math.sin(a) * h); } ctx.closePath(); ctx.fill(); ctx.stroke(); };
+    drawScute(0, -s * .02, s * .1, s * .08);
+    drawScute(-s * .15, -s * .02, s * .08, s * .06);
+    drawScute(s * .15, -s * .02, s * .08, s * .06);
+    drawScute(-s * .08, -s * .16, s * .07, s * .05);
+    drawScute(s * .08, -s * .16, s * .07, s * .05);
+    drawScute(-s * .08, s * .12, s * .07, s * .05);
+    drawScute(s * .08, s * .12, s * .07, s * .05);
     // Cabeza
-    ctx.beginPath(); ctx.ellipse(s * .45, -s * .05, s * .14, s * .1, 0, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.ellipse(s * .42, -s * .04, s * .13, s * .09, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#4ADE80'; ctx.fill(); ctx.strokeStyle = '#16A34A'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Ojos
-    ctx.beginPath(); ctx.arc(s * .5, -s * .08, s * .035, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .5, -s * .08, s * .018, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
-    // Aletas
+    // Ojo
+    ctx.beginPath(); ctx.arc(s * .48, -s * .07, s * .035, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(s * .48, -s * .07, s * .02, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    // Pico (boca de tortuga)
+    ctx.beginPath(); ctx.moveTo(s * .54, -s * .02); ctx.lineTo(s * .56, s * .01); ctx.lineTo(s * .52, s * .02); ctx.closePath(); ctx.fillStyle = '#D4A574'; ctx.fill();
+    // Aleta delantera (grande, como remo)
     ctx.fillStyle = '#4ADE80'; ctx.strokeStyle = '#16A34A'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(-s * .25, s * .2); ctx.quadraticCurveTo(-s * .5, s * .38 + wag * s * .1, -s * .35, s * .18); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s * .15, s * .25); ctx.quadraticCurveTo(s * .35, s * .42 + wag * s * .1, s * .2, s * .2); ctx.closePath(); ctx.fill(); ctx.stroke();
-    // Patita trasera
-    ctx.beginPath(); ctx.moveTo(-s * .3, s * .05); ctx.quadraticCurveTo(-s * .5, s * .12 + wag * s * .08, -s * .35, s * .02); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s * .2, s * .15); ctx.quadraticCurveTo(s * .45, s * .38 + wag * s * .15, s * .55, s * .22 + wag * s * .1);
+    ctx.quadraticCurveTo(s * .4, s * .15, s * .2, s * .12); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Aleta trasera
+    ctx.beginPath(); ctx.moveTo(-s * .28, s * .12); ctx.quadraticCurveTo(-s * .48, s * .28 + wag * s * .1, -s * .52, s * .16 + wag * s * .08);
+    ctx.quadraticCurveTo(-s * .4, s * .08, -s * .25, s * .1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Aleta delantera izquierda (detras, dibujada primero pero tapada)
+    ctx.globalAlpha = .6;
+    ctx.beginPath(); ctx.moveTo(-s * .2, s * .15); ctx.quadraticCurveTo(-s * .1, s * .35, -s * .0, s * .25); ctx.quadraticCurveTo(-s * .05, s * .18, -s * .15, s * .12); ctx.closePath(); ctx.fillStyle = '#22C55E'; ctx.fill();
+    ctx.globalAlpha = 1;
+    // Patron de puntos en la piel
+    ctx.fillStyle = '#22C55E'; ctx.globalAlpha = .3;
+    for (let i = 0; i < 6; i++) { const pa = (i / 6) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(pa) * s * .45, Math.sin(pa) * s * .32 + s * .04, s * .015, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
 
   } else if (f.species === 5) {
-    // CANGREJO
-    const walk = Math.sin(time * .08 + f.phase) * s * .04;
-    // Cuerpo ovalado
-    ctx.beginPath(); ctx.ellipse(0, 0, s * .25, s * .18, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#EF4444'; ctx.fill(); ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 2; ctx.stroke();
-    // Patas (3 de cada lado)
-    ctx.strokeStyle = '#DC2626'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    // ------------------- CANGREJO (realista) -------------------
+    const walk = Math.sin(time * .08 + f.phase) * s * .05;
+    // Caparazon hexagonal
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 - Math.PI/2; const r = k % 2 === 0 ? s * .28 : s * .22; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.closePath(); ctx.fillStyle = '#DC2626'; ctx.fill(); ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 2; ctx.stroke();
+    // Detalle caparazon
+    ctx.beginPath(); ctx.ellipse(0, s * .02, s * .12, s * .08, 0, 0, Math.PI * 2); ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 1; ctx.globalAlpha = .4; ctx.stroke(); ctx.globalAlpha = 1;
+    // 4 patas caminadoras de cada lado (segmentadas)
+    ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (let side = -1; side <= 1; side += 2) {
-      for (let i = 0; i < 3; i++) {
-        const yy = -s * .04 + i * s * .07;
-        ctx.beginPath(); ctx.moveTo(side * s * .18, yy); ctx.lineTo(side * s * .4 + walk, yy + s * .08); ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const yy = -s * .08 + i * s * .06;
+        const seg1x = side * (s * .28 + i * s * .02), seg1y = yy;
+        const seg2x = side * (s * .42 + i * s * .03) + walk * (i % 2 === 0 ? 1 : -1), seg2y = yy + s * .12 + i * s * .02;
+        const seg3x = side * (s * .52 + i * s * .03) + walk * (i % 2 === 0 ? .5 : -.5), seg3y = yy + s * .2 + i * s * .02;
+        ctx.beginPath(); ctx.moveTo(side * s * .22, yy);
+        ctx.lineTo(seg1x, seg1y); ctx.lineTo(seg2x, seg2y); ctx.lineTo(seg3x, seg3y); ctx.stroke();
       }
     }
-    // Pinzas grandes
-    ctx.fillStyle = '#DC2626'; ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 2;
+    // Pinzas (quelíceros) grandes
+    ctx.fillStyle = '#DC2626'; ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 2;
     for (let side = -1; side <= 1; side += 2) {
-      ctx.beginPath(); ctx.moveTo(side * s * .2, -s * .12); ctx.lineTo(side * s * .38, -s * .25 + walk * .3); ctx.lineTo(side * s * .28, -s * .15); ctx.closePath(); ctx.fill(); ctx.stroke();
-      // Dedo de la pinza
-      ctx.beginPath(); ctx.moveTo(side * s * .38, -s * .25 + walk * .3); ctx.lineTo(side * s * .42, -s * .32 + walk * .3); ctx.stroke();
+      // Brazo de la pinza
+      ctx.beginPath(); ctx.moveTo(side * s * .2, -s * .1);
+      ctx.quadraticCurveTo(side * s * .35, -s * .28 + walk * .5, side * s * .45, -s * .2 + walk * .3);
+      ctx.quadraticCurveTo(side * s * .38, -s * .12, side * s * .2, -s * .04); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Pinza (dos dedos)
+      const px = side * s * .45, py = -s * .2 + walk * .3;
+      ctx.beginPath(); ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(px + side * s * .08, py - s * .1, px + side * s * .05, py - s * .15);
+      ctx.quadraticCurveTo(px, py - s * .08, px, py); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(px + side * s * .1, py + s * .02, px + side * s * .08, py + s * .06);
+      ctx.quadraticCurveTo(px, py + s * .02, px, py); ctx.fill(); ctx.stroke();
+      // Dientes en la pinza
+      ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 1;
+      for (let t = 0; t < 3; t++) { const tx = px + side * (s * .02 + t * s * .02), ty = py - s * .04 - t * s * .02; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + side * s * .015, ty - s * .015); ctx.stroke(); }
     }
-    // Ojos saltones
-    ctx.beginPath(); ctx.arc(-s * .08, -s * .22, s * .06, 0, Math.PI * 2); ctx.fillStyle = '#FCA5A5'; ctx.fill(); ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath(); ctx.arc(s * .08, -s * .22, s * .06, 0, Math.PI * 2); ctx.fillStyle = '#FCA5A5'; ctx.fill(); ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath(); ctx.arc(-s * .08, -s * .22, s * .025, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s * .08, -s * .22, s * .025, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    // Ojos saltones (pedúnculos)
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath(); ctx.moveTo(side * s * .06, -s * .18); ctx.lineTo(side * s * .07, -s * .25); ctx.strokeStyle = '#DC2626'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(side * s * .07, -s * .26, s * .05, 0, Math.PI * 2); ctx.fillStyle = '#FCA5A5'; ctx.fill(); ctx.strokeStyle = '#991B1B'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(side * s * .07, -s * .26, s * .025, 0, Math.PI * 2); ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    }
+    // Antenas
+    ctx.strokeStyle = '#B91C1C'; ctx.lineWidth = 1; ctx.globalAlpha = .4;
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath(); ctx.moveTo(side * s * .04, -s * .14);
+      ctx.quadraticCurveTo(side * s * .02, -s * .3, side * s * .01, -s * .38); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
 
   } else if (f.species === 6) {
-    // MEDUSA
-    const pulse = 1 + Math.sin(time * .04 + f.phase) * .05;
-    // Campana
-    ctx.beginPath(); ctx.arc(0, 0, s * .3 * pulse, 0, Math.PI * 2);
-    ctx.fillStyle = f.body; ctx.globalAlpha = .35; ctx.fill(); ctx.globalAlpha = 1;
+    // ------------------- MEDUSA (realista) -------------------
+    const pulse = 1 + Math.sin(time * .04 + f.phase) * .08;
+    // Campana con borde lobulado
+    ctx.beginPath(); ctx.arc(0, -s * .02, s * .28 * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = f.body; ctx.globalAlpha = .2; ctx.fill(); ctx.globalAlpha = 1;
     ctx.strokeStyle = f.fin; ctx.lineWidth = 2; ctx.stroke();
-    // Puntos brillantes en la campana
-    ctx.fillStyle = 'white'; ctx.globalAlpha = .3;
-    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; ctx.beginPath(); ctx.arc(Math.cos(a) * s * .15 * pulse, Math.sin(a) * s * .12 * pulse, s * .02, 0, Math.PI * 2); ctx.fill(); }
-    ctx.globalAlpha = 1;
-    // Tentaculos
+    // Canales radiales (lineas desde el centro)
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 1; ctx.globalAlpha = .2;
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * s * .24 * pulse, Math.sin(a) * s * .24 * pulse); ctx.stroke(); }
+    // Boca/brazos orales (centro)
     ctx.strokeStyle = f.fin; ctx.lineWidth = 1.5; ctx.globalAlpha = .3;
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2 - .3;
-      const x0 = Math.cos(angle) * s * .28, y0 = Math.sin(angle) * s * .25;
-      ctx.beginPath(); ctx.moveTo(x0, y0);
-      let x = x0, y = y0;
-      for (let t = 0; t < s * .6; t += 5) { x += Math.sin((t + time * .02) * .2 + i) * 2; y += 4; ctx.lineTo(x, y); }
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      ctx.beginPath(); ctx.moveTo(0, s * .02); let ox = 0, oy = s * .02;
+      for (let t = 0; t < s * .35; t += 4) { ox += Math.sin((t + time * .015) * .15 + i * 2) * 3; oy += 3; ctx.lineTo(ox, oy); }
       ctx.stroke();
     }
+    ctx.globalAlpha = 1;
+    // Tentaculos largos y finos
+    ctx.strokeStyle = f.fin; ctx.lineWidth = 1.2; ctx.globalAlpha = .25;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const x0 = Math.cos(angle) * s * .26 * pulse, y0 = Math.sin(angle) * s * .25 * pulse;
+      ctx.beginPath(); ctx.moveTo(x0, y0);
+      let x = x0, y = y0;
+      const len = s * (.5 + ((i * 137 + f.phase * 10) % 100) / 250);
+      for (let t = 0; t < len; t += 4) { x += Math.sin((t + time * .025) * .12 + i * 1.5) * (1.5 + Math.sin(i) * .5); y += 3.5; ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // Puntos bioluminiscentes
+    ctx.fillStyle = 'white'; ctx.globalAlpha = .2;
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.sin(time * .02 + i) * .2; ctx.beginPath(); ctx.arc(Math.cos(a) * s * .16 * pulse, Math.sin(a) * s * .14 * pulse, s * .018, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
   ctx.restore();
