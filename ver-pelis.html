@@ -57,6 +57,12 @@ input:focus{border-color:#f59e0b}
       <button class="btn-close" id="btn-close">&times;</button>
     </div>
     <div class="providers" id="providers"></div>
+    <div style="display:flex;gap:6px;padding:6px 18px;border-bottom:1px solid #1a1a2e;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:#555;margin-right:4px">IDIOMA</span>
+      <button class="lang-btn active" data-lang="es" onclick="switchLang('es')" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#f59e0b;border-color:#f59e0b">ESP</button>
+      <button class="lang-btn" data-lang="en" onclick="switchLang('en')" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#aaa">ENG</button>
+      <button class="lang-btn" data-lang="es-sub" onclick="switchLang('es-sub')" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#aaa">SUB ESP</button>
+    </div>
     <div class="episode-picker" id="episode-picker" style="display:none;padding:8px 18px;border-bottom:1px solid #1a1a2e;gap:8px;flex-wrap:wrap;align-items:center">
       <label style="font-size:12px;color:#aaa">Temporada</label>
       <select id="season-select" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 8px;color:#e0e0e0;font-size:12px"></select>
@@ -182,6 +188,7 @@ let currentCategory = 'trending'
 let currentMediaType = 'movie'
 let currentSeason = 1
 let currentEpisode = 1
+let currentLang = 'es'
 
 // ─── DOM refs ───────────────────────────────────────────────
 const $ = s => document.querySelector(s)
@@ -374,6 +381,15 @@ document.getElementById('episode-select').addEventListener('change', function() 
   if (currentId) loadStream(currentId, currentType, currentSeason, currentEpisode)
 })
 
+window.switchLang = function(lang) {
+  currentLang = lang
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.style.color = b.dataset.lang === lang ? '#f59e0b' : '#aaa'
+    b.style.borderColor = b.dataset.lang === lang ? '#f59e0b' : '#2a2a3e'
+  })
+  if (currentId) loadStream(currentId, currentType, currentSeason, currentEpisode)
+}
+
 function switchProvider(providerId) {
   currentProvider = PROVIDERS.find(p => p.id === providerId) || PROVIDERS[0]
   providersEl.querySelectorAll('button').forEach(b => b.classList.remove('active'))
@@ -381,10 +397,19 @@ function switchProvider(providerId) {
   loadStream(currentId, currentType, currentSeason, currentEpisode)
 }
 
+function langParam(url, lang) {
+  if (lang === 'en' || !lang) return url
+  const sep = url.includes('?') ? '&' : '?'
+  if (lang === 'es') return url + sep + 'lang=es'
+  if (lang === 'es-sub') return url + sep + 'lang=es&sub=es'
+  return url
+}
+
 function loadStream(id, type, season, episode) {
-  const url = type === 'movie'
+  let url = type === 'movie'
     ? currentProvider.movie(id)
     : currentProvider.tv(id, season || 1, episode || 1)
+  url = langParam(url, currentLang)
   playerWrap.innerHTML = '<div class="loading" id="player-loading"><div class="spinner"></div>Cargando reproductor...</div>'
   const iframe = document.createElement('iframe')
   iframe.allow = 'autoplay; fullscreen; picture-in-picture'
