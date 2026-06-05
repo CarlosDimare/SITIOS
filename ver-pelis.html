@@ -18,19 +18,18 @@ input:focus{border-color:#f59e0b}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;padding:16px 20px}
 @media(min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}}
 .card{perspective:1000px;background:transparent;border:none;cursor:pointer}
-.card-inner{position:relative;transform-style:preserve-3d;transition:transform .5s ease;border-radius:10px;border:1px solid #1a1a2e}
+.card-inner{display:grid;transform-style:preserve-3d;transition:transform .5s ease;border-radius:10px;border:1px solid #1a1a2e}
 .card:hover .card-inner{transform:rotateY(180deg)}
-.card-front,.card-back{-webkit-backface-visibility:hidden;backface-visibility:hidden;border-radius:10px;overflow:hidden}
+.card-front,.card-back{grid-area:1/1;-webkit-backface-visibility:hidden;backface-visibility:hidden;border-radius:10px;overflow:hidden}
 .card-front{background:#12121e}
 .card-front img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
 .card-front .info{padding:6px 8px}
 .card-front .info h3{font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-front .info .meta{font-size:11px;color:#666}
 .card-front .info .rating{color:#f59e0b}
-.card-back{position:absolute;top:0;left:0;right:0;bottom:0;transform:rotateY(180deg);background:#12121e;pointer-events:none}
-.cb-scroll{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;padding:12px;pointer-events:auto}
-.cb-overview{font-size:22px;color:#888;line-height:1.4}
-.cb-credits{font-size:20px;color:#666;margin-top:8px}
+.card-back{transform:rotateY(180deg);background:#12121e;overflow-y:auto;padding:10px}
+.cb-overview{font-size:20px;color:#888;line-height:1.4}
+.cb-credits{font-size:18px;color:#666;margin-top:8px}
 .cb-credits span{color:#aaa}
 .modal-overlay{position:fixed;inset:0;z-index:100;background:#000000cc;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
@@ -254,9 +253,7 @@ function renderItems(items) {
                 <div class="meta">${year ? `<span>${year}</span>` : ''}${rating ? ` <span class="rating">★ ${rating}</span>` : ''} <span style="font-size:10px;color:#f59e0b">${typeLabel}</span></div>
               </div>
             </div>
-            <div class="card-back">
-              <div class="cb-spinner" style="margin:auto"><div class="spinner"></div></div>
-            </div>
+            <div class="card-back"></div>
           </div>
         </div>`
       }).join('')
@@ -293,11 +290,6 @@ function populateCardBack(id, type, card) {
 }
 
 function renderCardBack(d, type, el) {
-  const title = d.title || d.name || ''
-  const year = (d.release_date || d.first_air_date || '').slice(0,4)
-  const rating = d.vote_average ? d.vote_average.toFixed(1) : ''
-  const runtime = d.runtime ? d.runtime + 'min' : d.episode_run_time?.[0] ? d.episode_run_time[0] + 'min' : ''
-  const genres = (d.genres || []).map(g => `<span class="cb-genre">${g.name}</span>`).join('')
   const overview = d.overview || 'Sin reseña disponible.'
   const crew = d.credits?.crew || []
   const cast = d.credits?.cast || []
@@ -306,12 +298,10 @@ function renderCardBack(d, type, el) {
     : (d.created_by || []).map(c => c.name).join(', ')
   const topCast = cast.slice(0, 2).map(c => c.name).join(', ')
 
-  el.innerHTML = `<div class="cb-scroll">
-    <div class="cb-overview">${overview}</div>
+  el.innerHTML = `<div class="cb-overview">${overview}</div>
     <div class="cb-credits">
-      ${topCast ? '<div>👥 <span>' + topCast + '</span></div>' : ''}
-    </div>
-  </div>`
+      ${topCast ? '<span>' + topCast + '</span>' : ''}
+    </div>`
 }
 
 grid.addEventListener('mouseover', e => {
