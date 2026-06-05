@@ -17,20 +17,13 @@ input:focus{border-color:#f59e0b}
 .cat:hover,.cat.active{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;padding:16px 20px}
 @media(min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}}
-.card{perspective:1000px;background:transparent;border:none;cursor:pointer}
-.card-inner{display:grid;transform-style:preserve-3d;transition:transform .5s ease;border-radius:10px;border:1px solid #1a1a2e}
-.card:hover .card-inner{transform:rotateY(180deg)}
-.card-front,.card-back{grid-area:1/1;-webkit-backface-visibility:hidden;backface-visibility:hidden;border-radius:10px;overflow:hidden}
-.card-front{background:#12121e}
-.card-front img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
-.card-front .info{padding:6px 8px}
-.card-front .info h3{font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-front .info .meta{font-size:11px;color:#666}
-.card-front .info .rating{color:#f59e0b}
-.card-back{transform:rotateY(180deg);background:#12121e;overflow-y:auto;padding:10px}
-.cb-overview{font-size:20px;color:#888;line-height:1.4}
-.cb-credits{font-size:18px;color:#666;margin-top:8px}
-.cb-credits span{color:#aaa}
+.card{border-radius:10px;overflow:hidden;border:1px solid #1a1a2e;cursor:pointer;background:#12121e;transition:border-color .2s}
+.card:hover{border-color:#f59e0b}
+.card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#1a1a2e}
+.card .info{padding:6px 8px}
+.card .info h3{font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .info .meta{font-size:11px;color:#666}
+.card .info .rating{color:#f59e0b}
 .modal-overlay{position:fixed;inset:0;z-index:100;background:#000000cc;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
 .modal{background:#0a0a0f;border-radius:12px;width:100%;max-width:900px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;border:1px solid #2a2a3e}
@@ -69,6 +62,11 @@ input:focus{border-color:#f59e0b}
       <button class="lang-btn active" data-lang="es" onclick="switchLang('es')" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#f59e0b;border-color:#f59e0b">ESP</button>
       <button class="lang-btn" data-lang="en" onclick="switchLang('en')" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#aaa">ENG</button>
       <button class="lang-btn" data-lang="es-sub" onclick="switchLang('es-sub')" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#aaa">SUB ESP</button>
+    </div>
+    <div class="modal-info" id="modal-info" style="display:none;padding:10px 18px;border-bottom:1px solid #1a1a2e;max-height:150px;overflow-y:auto">
+      <div class="mi-meta" id="mi-meta" style="font-size:12px;color:#666;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div class="mi-overview" id="mi-overview" style="font-size:14px;color:#888;line-height:1.5"></div>
+      <div class="mi-credits" id="mi-credits" style="font-size:13px;color:#666;margin-top:6px"></div>
     </div>
     <div class="episode-picker" id="episode-picker" style="display:none;padding:8px 18px;border-bottom:1px solid #1a1a2e;gap:8px;flex-wrap:wrap;align-items:center">
       <label style="font-size:12px;color:#aaa">Temporada</label>
@@ -245,15 +243,10 @@ function renderItems(items) {
           ? `${TMDB_IMG}${m.poster_path}`
           : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 185 278"><rect fill="%231a1a2e" width="185" height="278"/><text x="50%" y="50%" fill="%23444" font-size="40" text-anchor="middle" dy=".35em">🎬</text></svg>'
         return `<div class="card" data-id="${m.id}" data-type="${isTv ? 'tv' : 'movie'}" onclick="openPlayer(${m.id},'${isTv ? 'tv' : 'movie'}')">
-          <div class="card-inner">
-            <div class="card-front">
-              <img src="${img}" loading="lazy" alt="${title}">
-              <div class="info">
-                <h3>${title}</h3>
-                <div class="meta">${year ? `<span>${year}</span>` : ''}${rating ? ` <span class="rating">★ ${rating}</span>` : ''} <span style="font-size:10px;color:#f59e0b">${typeLabel}</span></div>
-              </div>
-            </div>
-            <div class="card-back"></div>
+          <img src="${img}" loading="lazy" alt="${title}">
+          <div class="info">
+            <h3>${title}</h3>
+            <div class="meta">${year ? `<span>${year}</span>` : ''}${rating ? ` <span class="rating">★ ${rating}</span>` : ''} <span style="font-size:10px;color:#f59e0b">${typeLabel}</span></div>
           </div>
         </div>`
       }).join('')
@@ -273,45 +266,41 @@ async function loadContent(category, mediaType, page = 1) {
   }
 }
 
-// ─── Card flip data ─────────────────────────────────────────
+// ─── Detail cache ───────────────────────────────────────────
 const detailCache = new Map()
 
-function populateCardBack(id, type, card) {
-  const key = id + '_' + type
-  const back = card.querySelector('.card-back')
-  if (detailCache.has(key)) {
-    renderCardBack(detailCache.get(key), type, back)
-    return
-  }
-  fetch(TMDB.detail(id, type))
-    .then(r => r.ok ? r.json() : null)
-    .then(d => { if (d) { detailCache.set(key, d); renderCardBack(d, type, back) } })
-    .catch(() => {})
-}
-
-function renderCardBack(d, type, el) {
-  const overview = d.overview || 'Sin reseña disponible.'
+function populateModalInfo(d, type) {
+  const title = d.title || d.name || ''
+  const year = (d.release_date || d.first_air_date || '').slice(0,4)
+  const rating = d.vote_average ? d.vote_average.toFixed(1) : ''
+  const runtime = d.runtime ? d.runtime + ' min' : d.episode_run_time?.[0] ? d.episode_run_time[0] + ' min' : ''
+  const genres = (d.genres || []).map(g => g.name).join(' · ')
+  const overview = d.overview || ''
   const crew = d.credits?.crew || []
   const cast = d.credits?.cast || []
   const director = type === 'movie'
     ? crew.filter(c => c.job === 'Director').map(c => c.name).join(', ')
     : (d.created_by || []).map(c => c.name).join(', ')
-  const topCast = cast.slice(0, 2).map(c => c.name).join(', ')
+  const topCast = cast.slice(0, 3).map(c => c.name).join(', ')
 
-  el.innerHTML = `<div class="cb-overview">${overview}</div>
-    <div class="cb-credits">
-      ${topCast ? '<span>' + topCast + '</span>' : ''}
-    </div>`
+  document.getElementById('modal-title').textContent = title
+  document.getElementById('modal-info').style.display = 'block'
+  document.getElementById('mi-meta').innerHTML = [
+    year,
+    rating ? '\u2605 ' + rating : '',
+    runtime,
+    genres,
+  ].filter(Boolean).join(' <span style="color:#444">\u00b7</span> ')
+  document.getElementById('mi-overview').innerHTML = overview
+    ? overview
+    : '<span style="color:#555">Sin rese\u00f1a disponible.</span>'
+  const creditsParts = []
+  if (director) creditsParts.push(director)
+  if (topCast) creditsParts.push('<span style="color:#aaa">' + topCast + '</span>')
+  document.getElementById('mi-credits').innerHTML = creditsParts.length
+    ? creditsParts.join(' <span style="color:#444">\u00b7</span> ')
+    : ''
 }
-
-grid.addEventListener('mouseover', e => {
-  const card = e.target.closest('.card')
-  if (!card) return
-  const id = card.dataset.id
-  const type = card.dataset.type
-  if (!id) return
-  populateCardBack(id, type, card)
-})
 
 // ─── Player ─────────────────────────────────────────────────
 window.openPlayer = function(id, type = 'movie', season, episode) {
@@ -320,7 +309,21 @@ window.openPlayer = function(id, type = 'movie', season, episode) {
   currentSeason = season || 1
   currentEpisode = episode || 1
   modal.classList.add('open')
-  const cached = detailCache.get(id + '_' + type)
+  document.getElementById('modal-info').style.display = 'none'
+
+  const key = id + '_' + type
+  const cached = detailCache.get(key)
+  if (cached) {
+    populateModalInfo(cached, type)
+  } else {
+    fetch(TMDB.detail(id, type))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) { detailCache.set(key, d); populateModalInfo(d, type) }
+      })
+      .catch(() => {})
+  }
+
   modalTitle.textContent = cached ? (cached.title || cached.name || '') : 'Cargando...'
 
   providersEl.innerHTML = PROVIDERS.map(p =>
