@@ -40,6 +40,14 @@ input:focus{border-color:#f59e0b}
 .spinner{width:32px;height:32px;border:3px solid #1a1a2e;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .error{text-align:center;padding:40px 20px;color:#ef4444;font-size:14px}
+.info-toggle{background:none;border:none;color:#555;cursor:pointer;font-size:11px;padding:4px 8px}
+.info-toggle:hover{color:#f59e0b}
+.meta-info{font-size:12px;color:#aaa;padding:10px 18px;display:none;border-bottom:1px solid #1a1a2e;max-height:160px;overflow-y:auto}
+.meta-info.open{display:block}
+.meta-info .genre{display:inline-block;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:4px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0;color:#f59e0b}
+.meta-info .overview{font-size:12px;line-height:1.5;color:#999;margin:6px 0}
+.meta-info .credits{font-size:11px;color:#666;margin-top:4px}
+.meta-info .credits span{color:#aaa}
 </style>
 </head>
 <body>
@@ -69,6 +77,15 @@ input:focus{border-color:#f59e0b}
       <label style="font-size:12px;color:#aaa">Episodio</label>
       <select id="episode-select" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 8px;color:#e0e0e0;font-size:12px"></select>
     </div>
+    <div style="display:flex;gap:6px;padding:4px 18px;border-bottom:1px solid #1a1a2e;align-items:center">
+      <button class="info-toggle" id="info-toggle" onclick="toggleInfo()">📋 Sinopsis</button>
+      <span id="info-badge" style="font-size:11px;color:#555;flex:1"></span>
+    </div>
+    <div class="meta-info" id="meta-info">
+      <div class="overview" id="overview"></div>
+      <div id="genres"></div>
+      <div class="credits" id="credits"></div>
+    </div>
     <div class="player-wrap" id="player-wrap"><div class="loading" id="player-loading"><div class="spinner"></div></div></div>
   </div>
 </div>
@@ -91,6 +108,8 @@ const TMDB = {
     topRated: page => `https://api.themoviedb.org/3/tv/top_rated?api_key=${TMDB_KEY}&page=${page}`,
   },
   search: q => `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&page=1&region=AR`,
+  person: q => `https://api.themoviedb.org/3/search/person?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&page=1`,
+  detail: (id, type) => `https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_KEY}&append_to_response=credits`,
   tvDetail: id => `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_KEY}`,
   tvSeason: (id, s) => `https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB_KEY}`,
 }
@@ -198,10 +217,29 @@ async function fetchContent(category, mediaType, page = 1) {
 }
 
 async function searchContent(query) {
-  const res = await fetch(TMDB.search(query))
-  if (!res.ok) throw new Error('search fail')
-  const data = await res.json()
-  return data.results || []
+  const [multiRes, personRes] = await Promise.all([
+    fetch(TMDB.search(query)),
+    fetch(TMDB.person(query)),
+  ])
+  const multi = multiRes.ok
+    ? ((await multiRes.json()).results || []).filter(m => m.media_type !== 'person')
+    : []
+  const people = personRes.ok ? (await personRes.json()).results || [] : []
+  // Flatten person results: extract known_for movies/series
+  const personItems = []
+  for (const p of people.slice(0,3)) {
+    if (p.known_for) {
+      for (const item of p.known_for) {
+        if (item.media_type === 'movie' || item.media_type === 'tv') {
+          // avoid duplicates by id
+          if (!multi.some(m => m.id === item.id && m.media_type === item.media_type)) {
+            personItems.push(item)
+          }
+        }
+      }
+    }
+  }
+  return [...multi, ...personItems]
 }
 
 // ─── Render ─────────────────────────────────────────────────
@@ -241,6 +279,57 @@ async function loadContent(category, mediaType, page = 1) {
 }
 
 // ─── Player ─────────────────────────────────────────────────
+async function loadDetail(id, type) {
+  const infoEl = document.getElementById('meta-info')
+  const badgeEl = document.getElementById('info-badge')
+  const overviewEl = document.getElementById('overview')
+  const genresEl = document.getElementById('genres')
+  const creditsEl = document.getElementById('credits')
+  try {
+    const res = await fetch(TMDB.detail(id, type))
+    const d = await res.json()
+    const title = d.title || d.name || ''
+    modalTitle.textContent = title
+
+    overviewEl.textContent = d.overview || 'Sin reseña disponible.'
+
+    genresEl.innerHTML = (d.genres || []).map(g => `<span class="genre">${g.name}</span>`).join('')
+
+    const year = (d.release_date || d.first_air_date || '').slice(0,4)
+    const rating = d.vote_average ? d.vote_average.toFixed(1) : ''
+    const runtime = d.runtime ? `${d.runtime}min` : d.episode_run_time?.[0] ? `${d.episode_run_time[0]}min` : ''
+    const badgeParts = [year, rating && `★ ${rating}`, runtime].filter(Boolean)
+    badgeEl.textContent = badgeParts.join(' · ')
+
+    // Director (movie) or Creator (tv)
+    const crew = d.credits?.crew || []
+    const cast = d.credits?.cast || []
+    const director = type === 'movie'
+      ? crew.filter(c => c.job === 'Director').map(c => c.name).join(', ')
+      : (d.created_by || []).map(c => c.name).join(', ')
+    const topCast = cast.slice(0,5).map(c => c.name).join(', ')
+    const lines = []
+    if (director) lines.push(`${type === 'movie' ? 'Director' : 'Creador'}: ${director}`)
+    if (topCast.length) lines.push(`Reparto: ${topCast}`)
+    creditsEl.innerHTML = lines.join('<br>')
+
+    infoEl.classList.remove('open')
+    document.getElementById('info-toggle').textContent = '📋 Sinopsis'
+  } catch {
+    badgeEl.textContent = ''
+    overviewEl.textContent = ''
+    genresEl.innerHTML = ''
+    creditsEl.innerHTML = ''
+  }
+}
+
+window.toggleInfo = function() {
+  const el = document.getElementById('meta-info')
+  const btn = document.getElementById('info-toggle')
+  const open = el.classList.toggle('open')
+  btn.textContent = open ? '📋 Ocultar' : '📋 Sinopsis'
+}
+
 window.openPlayer = function(id, type = 'movie', season, episode) {
   currentId = id
   currentType = type
@@ -280,6 +369,7 @@ window.openPlayer = function(id, type = 'movie', season, episode) {
     picker.style.display = 'none'
   }
 
+  loadDetail(id, type)
   loadStream(id, type, currentSeason, currentEpisode)
 }
 
