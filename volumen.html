@@ -232,7 +232,7 @@ let currentVolume = 0;
 let threshold = 65;
 let isAlert = false;
 let alertTimer = null;
-let countdown = 5;
+let countdown = 1;
 let isMonitoring = false;
 let devices = [];
 let selectedDeviceId = null;
@@ -796,24 +796,24 @@ function triggerAlert() {
   if (isAlert) return;
   isAlert = true; fishScared = true;
   showScreen(screenAlert);
-  countdown = 5; renderCountdown();
+  countdown = 1; renderCountdown();
   $('alert-vol-text').textContent = `Volumen: ${currentVolume}% — Silencio para alegrar al delfín`;
 
   alertTimer = setInterval(() => {
-    if (currentVolume >= threshold * .8) { countdown = 5; renderCountdown(); return; }
-    countdown--;
-    if (countdown <= 0) { clearInterval(alertTimer); alertTimer = null; resetMonitor(); }
+    if (currentVolume >= threshold * .8) { countdown = 1; renderCountdown(); return; }
+    countdown++;
+    if (countdown > 10) { clearInterval(alertTimer); alertTimer = null; resetMonitor(); }
     else renderCountdown();
   }, 1000);
 }
 
 function renderCountdown() {
   cdNumber.textContent = countdown;
-  cdBar.style.width = (countdown / 5 * 100) + '%';
+  cdBar.style.width = (countdown / 10 * 100) + '%';
   cdBubbles.innerHTML = '';
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     const b = document.createElement('div');
-    b.className = `w-7 h-7 md:w-8 md:h-8 rounded-full border-2 transition-all duration-300 ${i < countdown ? 'bg-cyan-400/40 border-cyan-300 animate-pulse' : 'bg-transparent border-blue-800/40'}`;
+    b.className = `w-5 h-5 md:w-6 md:h-6 rounded-full border-2 transition-all duration-300 ${i < countdown ? 'bg-cyan-400/40 border-cyan-300 animate-pulse' : 'bg-transparent border-blue-800/40'}`;
     cdBubbles.appendChild(b);
   }
 }
