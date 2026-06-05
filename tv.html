@@ -128,15 +128,15 @@
       </button>
       <button class="ch-item" data-channel="telefe" onclick="switchChannel('telefe')">
         <img src="logos/telefe.png" alt="Telefe" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">Telefe</span><span class="freq">Canal 11</span></span>
+        <span class="ch-label"><span class="name">Telefe</span><span class="freq">Canal 11</span><span class="tag">EMBED</span></span>
       </button>
       <button class="ch-item" data-channel="america" onclick="switchChannel('america')">
         <img src="logos/logo-america.svg" alt="América TV" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span></span>
+        <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span><span class="tag">EMBED</span></span>
       </button>
       <button class="ch-item" data-channel="tvpublica" onclick="switchChannel('tvpublica')">
         <img src="logos/tvpublica.ico" alt="TV Pública" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">TV Pública</span><span class="freq">Canal 7</span></span>
+        <span class="ch-label"><span class="name">TV Pública</span><span class="freq">Canal 7</span><span class="tag">EMBED</span></span>
       </button>
     </div>
 
@@ -148,7 +148,7 @@
       </button>
       <button class="ch-item" data-channel="deportv" onclick="switchChannel('deportv')">
         <img src="https://i.imgur.com/iyYLNRt.png" alt="DeporTV" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">DeporTV</span><span class="freq">TV Pública</span></span>
+        <span class="ch-label"><span class="name">DeporTV</span><span class="freq">TV Pública</span><span class="tag">EMBED</span></span>
       </button>
     </div>
 
@@ -241,23 +241,22 @@ const CHANNELS = {
     name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'TELEFE',
     logo: 'logos/telefe.png',
     sources: [
-      { id: 'youtube', label: 'YouTube', embed: 'https://www.youtube.com/embed/sMz81I5lr9o?autoplay=1' },
-      { id: 'directo', label: 'Directo HLS', url: 'http://181.13.252.102:8000/play/a06c/index.m3u8', direct: true },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=telefe' },
       { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=telefe' },
+      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=telefe' },
+      { id: 'bolaloca', label: 'BolaLoca', embed: 'https://bolaloca.my/player/3/74' },
     ],
     link: 'https://mitelefe.com/',
-    sourceLabel: 'YouTube · Telefe'
+    sourceLabel: 'La14HD · Telefe'
   },
   america: {
     name: 'América TV', sub: 'Canal 2 · Buenos Aires · Argentina', slug: 'AMÉRICA TV',
     logo: 'logos/logo-america.svg',
     sources: [
-      { id: 'youtube', label: 'YouTube', embed: 'https://www.youtube.com/embed/zcWXboTnous?autoplay=1' },
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=america' },
       { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=america' },
     ],
     link: 'https://www.americatv.com.ar/vivo',
-    sourceLabel: 'YouTube · América TV'
+    sourceLabel: 'La14HD · América TV'
   },
   tyc: {
     name: 'TyC Sports', sub: 'Deportes · Argentina', slug: 'TYC SPORTS',
@@ -272,21 +271,21 @@ const CHANNELS = {
     name: 'TV Pública', sub: 'Canal 7 · Buenos Aires · Argentina', slug: 'TV PÚBLICA',
     logo: 'logos/tvpublica.ico',
     sources: [
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=tvpublica' },
       { id: 'directo', label: 'Directo HLS', url: 'https://live.tvpublica.ar/hls/live.m3u8' },
-      { id: 'youtube', label: 'YouTube', embed: 'https://www.youtube.com/embed/mbM83qii8i8?autoplay=1' },
     ],
     link: 'https://tvpublica.com.ar/',
-    sourceLabel: 'TV Pública · YouTube'
+    sourceLabel: 'La14HD · TV Pública'
   },
   deportv: {
     name: 'DeporTV', sub: 'TV Pública · Argentina', slug: 'DEPORTV',
     logo: 'https://i.imgur.com/iyYLNRt.png',
     sources: [
-      { id: 'tda', label: 'TDA', url: 'https://5fb24b460df87.streamlock.net/live-cont.ar/deportv/playlist.m3u8' },
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=deportv' },
       { id: 'tvpublica', label: 'TV Pública Deportes', url: 'https://live.tvpublica.ar/hls/deportes.m3u8' },
     ],
     link: 'https://deportv.gov.ar/',
-    sourceLabel: 'Radio y TV Pública'
+    sourceLabel: 'La14HD · DeporTV'
   },
   tnt: {
     name: 'TNT Sports', sub: 'Deportes · Premium · Argentina', slug: 'TNT SPORTS',
