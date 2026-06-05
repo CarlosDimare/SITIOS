@@ -15,8 +15,8 @@ input:focus{border-color:#f59e0b}
 .categories{display:flex;gap:6px;flex-wrap:wrap}
 .cat{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;transition:all .2s;color:#aaa}
 .cat:hover,.cat.active{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:16px 20px}
-@media(min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;padding:16px 20px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}}
 .card{perspective:1000px;background:transparent;border:none;cursor:pointer}
 .card-inner{position:relative;transform-style:preserve-3d;transition:transform .5s ease;border-radius:10px;border:1px solid #1a1a2e}
 .card:hover .card-inner{transform:rotateY(180deg)}
@@ -33,7 +33,7 @@ input:focus{border-color:#f59e0b}
 .cb-genres{font-size:20px;display:flex;flex-wrap:wrap;gap:3px}
 .cb-genre{display:inline-block;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:4px;padding:1px 6px;color:#f59e0b;font-size:18px}
 .cb-overview{font-size:22px;color:#888;line-height:1.3;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
-.cb-credits{font-size:20px;color:#666;margin-top:auto}
+.cb-credits{font-size:20px;color:#666;margin-top:4px}
 .cb-credits span{color:#aaa}
 .modal-overlay{position:fixed;inset:0;z-index:100;background:#000000cc;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
@@ -301,13 +301,13 @@ function renderCardBack(d, type, el) {
   const rating = d.vote_average ? d.vote_average.toFixed(1) : ''
   const runtime = d.runtime ? d.runtime + 'min' : d.episode_run_time?.[0] ? d.episode_run_time[0] + 'min' : ''
   const genres = (d.genres || []).map(g => `<span class="cb-genre">${g.name}</span>`).join('')
-  const overview = (d.overview || '').slice(0, 250) + (d.overview?.length > 250 ? '...' : '')
+  const overview = (d.overview || '').slice(0, 110) + (d.overview?.length > 110 ? '...' : '')
   const crew = d.credits?.crew || []
   const cast = d.credits?.cast || []
   const director = type === 'movie'
     ? crew.filter(c => c.job === 'Director').map(c => c.name).join(', ')
     : (d.created_by || []).map(c => c.name).join(', ')
-  const topCast = cast.slice(0, 3).map(c => c.name).join(', ')
+  const topCast = cast.slice(0, 2).map(c => c.name).join(', ')
 
   el.innerHTML = `
     <div class="cb-title">${title}</div>
