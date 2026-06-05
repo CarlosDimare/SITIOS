@@ -98,16 +98,11 @@ const TMDB = {
 // ─── Providers ──────────────────────────────────────────────
 // TMDB ID → iframe URL. Providers verified to return 200 + no XFO.
 const PROVIDERS = [
-  { id: 'vidsrc',   name: 'VidSrc',  movie: id => `https://vidsrc.mov/embed/movie/${id}`,                 tv: (id,s,e) => `https://vidsrc.mov/embed/tv/${id}/${s}/${e}` },
-  { id: 'vidsrcto', name: 'VidSrc.to', movie: id => `https://vidsrc.to/embed/movie/${id}`,                tv: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-  { id: 'vsembed',  name: 'VsEmbed', movie: id => `https://vsembed.su/embed/movie/${id}`,                tv: (id,s,e) => `https://vsembed.su/embed/tv/${id}/${s}/${e}` },
-  { id: 'vidlink',  name: 'VidLink', movie: id => `https://vidlink.pro/movie/${id}`,                      tv: (id,s,e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
   { id: 'vidfast',  name: 'VidFast', movie: id => `https://vidfast.pro/movie/${id}`,                      tv: (id,s,e) => `https://vidfast.pro/tv/${id}/${s}/${e}` },
   { id: 'videasy',  name: 'Videasy', movie: id => `https://player.videasy.net/movie/${id}`,               tv: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}` },
-  { id: 'vidsrcsu', name: 'VidSrc.su', movie: id => `https://vidsrc.su/embed/movie/${id}`,               tv: (id,s,e) => `https://vidsrc.su/embed/tv/${id}/${s}/${e}` },
-  { id: 'ezvidapi', name: 'EZVidAPI', movie: id => `https://ezvidapi.com/embed/movie/${id}`,             tv: (id,s,e) => `https://ezvidapi.com/embed/tv/${id}/${s}/${e}` },
   { id: 'streamsrc',name: 'StreamSrc',movie: id => `https://streamsrc.cc/watch/movie/${id}`,              tv: (id,s,e) => `https://streamsrc.cc/watch/series/${id}?s=${s}&e=${e}` },
   { id: 'autoembed',name: 'AutoEmbed',movie: id => `https://autoembed.co/movie/tmdb/${id}`,              tv: (id,s,e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}` },
+  { id: 'ezvidapi', name: 'EZVidAPI', movie: id => `https://ezvidapi.com/embed/movie/${id}`,             tv: (id,s,e) => `https://ezvidapi.com/embed/tv/${id}/${s}/${e}` },
   { id: 'vidpop',   name: 'VidPop',  movie: id => `https://www.vidpop.xyz/embed/?id=${id}`,              tv: (id,s,e) => `https://www.vidpop.xyz/embed/?id=${id}&season=${s}&episode=${e}` },
 ]
 
