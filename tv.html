@@ -117,10 +117,10 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <span class="logo">TV</span>
-      <span class="logo-sub">M3U + Embed · En Vivo</span>
+      <span class="logo-sub">M3U + HLS · En Vivo</span>
     </div>
 
-    <div class="grp-label">General</div>
+    <div class="grp-label">Canales</div>
     <div class="ch-list" id="chList">
       <button class="ch-item active" data-channel="trece" onclick="switchChannel('trece')">
         <img src="logos/canal13.svg" alt="Canal 13" onerror="this.style.display='none'" crossorigin="anonymous">
@@ -128,47 +128,19 @@
       </button>
       <button class="ch-item" data-channel="telefe" onclick="switchChannel('telefe')">
         <img src="logos/telefe.png" alt="Telefe" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">Telefe</span><span class="freq">Canal 11</span><span class="tag">EMBED</span></span>
+        <span class="ch-label"><span class="name">Telefe</span><span class="freq">Canal 11</span><span class="tag">HLS</span></span>
       </button>
       <button class="ch-item" data-channel="america" onclick="switchChannel('america')">
         <img src="logos/logo-america.svg" alt="América TV" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span><span class="tag">EMBED</span></span>
+        <span class="ch-label"><span class="name">América TV</span><span class="freq">Canal 2</span><span class="tag">HLS</span></span>
       </button>
       <button class="ch-item" data-channel="tvpublica" onclick="switchChannel('tvpublica')">
         <img src="logos/tvpublica.ico" alt="TV Pública" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">TV Pública</span><span class="freq">Canal 7</span><span class="tag">EMBED</span></span>
+        <span class="ch-label"><span class="name">TV Pública</span><span class="freq">Canal 7</span><span class="tag">HLS</span></span>
       </button>
-    </div>
-
-    <div class="grp-label">Deportes</div>
-    <div class="ch-list">
       <button class="ch-item" data-channel="tyc" onclick="switchChannel('tyc')">
         <img src="logos/TyC_Sports_logo.svg" alt="TyC Sports" onerror="this.style.display='none'" crossorigin="anonymous">
         <span class="ch-label"><span class="name">TyC Sports</span><span class="tag">GRATIS</span></span>
-      </button>
-      <button class="ch-item" data-channel="deportv" onclick="switchChannel('deportv')">
-        <img src="https://i.imgur.com/iyYLNRt.png" alt="DeporTV" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">DeporTV</span><span class="freq">TV Pública</span><span class="tag">EMBED</span></span>
-      </button>
-    </div>
-
-    <div class="grp-label">Premium</div>
-    <div class="ch-list">
-      <button class="ch-item" data-channel="tnt" onclick="switchChannel('tnt')">
-        <img src="logos/tntsports.svg" alt="TNT Sports" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">TNT Sports</span><span class="tag">EMBED</span></span>
-      </button>
-      <button class="ch-item" data-channel="espnpremium" onclick="switchChannel('espnpremium')">
-        <img src="logos/espnpremium.svg" alt="ESPN Premium" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">ESPN Premium</span><span class="tag">EMBED</span></span>
-      </button>
-      <button class="ch-item" data-channel="espn1" onclick="switchChannel('espn1')">
-        <img src="logos/espn_wordmark.png" alt="ESPN 1" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">ESPN 1</span><span class="tag">EMBED</span></span>
-      </button>
-      <button class="ch-item" data-channel="foxsports" onclick="switchChannel('foxsports')">
-        <img src="logos/foxsports.png" alt="Fox Sports" onerror="this.style.display='none'" crossorigin="anonymous">
-        <span class="ch-label"><span class="name">Fox Sports 1</span><span class="tag">EMBED</span></span>
       </button>
     </div>
 
@@ -226,7 +198,9 @@
 </div>
 
 <script>
-/* ─── Channel Config — Solo M3U / HLS directo ─── */
+/* ─── Channel Config ─── */
+const LA14_WORKER = 'https://hls-proxy.carlosdimare.workers.dev'
+
 const CHANNELS = {
   trece: {
     name: 'Canal 13', sub: 'El Trece · Buenos Aires · Argentina', slug: 'EL TRECE',
@@ -241,9 +215,8 @@ const CHANNELS = {
     name: 'Telefe', sub: 'Canal 11 · Buenos Aires · Argentina', slug: 'TELEFE',
     logo: 'logos/telefe.png',
     sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=telefe' },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=telefe' },
-      { id: 'bolaloca', label: 'BolaLoca', embed: 'https://bolaloca.my/player/3/74' },
+      { id: 'la14hls', label: 'La14HD HLS', la14: 'telefe' },
+      { id: 'la14emb', label: 'La14HD Embed', embed: 'https://la14hd.com/vivo/canal.php?stream=telefe' },
     ],
     link: 'https://mitelefe.com/',
     sourceLabel: 'La14HD · Telefe'
@@ -252,11 +225,21 @@ const CHANNELS = {
     name: 'América TV', sub: 'Canal 2 · Buenos Aires · Argentina', slug: 'AMÉRICA TV',
     logo: 'logos/logo-america.svg',
     sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=america' },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=america' },
+      { id: 'la14hls', label: 'La14HD HLS', la14: 'america' },
+      { id: 'la14emb', label: 'La14HD Embed', embed: 'https://la14hd.com/vivo/canal.php?stream=america' },
     ],
     link: 'https://www.americatv.com.ar/vivo',
     sourceLabel: 'La14HD · América TV'
+  },
+  tvpublica: {
+    name: 'TV Pública', sub: 'Canal 7 · Buenos Aires · Argentina', slug: 'TV PÚBLICA',
+    logo: 'logos/tvpublica.ico',
+    sources: [
+      { id: 'la14hls', label: 'La14HD HLS', la14: 'tvpublica' },
+      { id: 'la14emb', label: 'La14HD Embed', embed: 'https://la14hd.com/vivo/canal.php?stream=tvpublica' },
+    ],
+    link: 'https://tvpublica.com.ar/',
+    sourceLabel: 'La14HD · TV Pública'
   },
   tyc: {
     name: 'TyC Sports', sub: 'Deportes · Argentina', slug: 'TYC SPORTS',
@@ -266,68 +249,6 @@ const CHANNELS = {
     ],
     link: 'https://tycsports.com/',
     sourceLabel: 'Amagi CDN'
-  },
-  tvpublica: {
-    name: 'TV Pública', sub: 'Canal 7 · Buenos Aires · Argentina', slug: 'TV PÚBLICA',
-    logo: 'logos/tvpublica.ico',
-    sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=tvpublica' },
-      { id: 'directo', label: 'Directo HLS', url: 'https://live.tvpublica.ar/hls/live.m3u8' },
-    ],
-    link: 'https://tvpublica.com.ar/',
-    sourceLabel: 'La14HD · TV Pública'
-  },
-  deportv: {
-    name: 'DeporTV', sub: 'TV Pública · Argentina', slug: 'DEPORTV',
-    logo: 'https://i.imgur.com/iyYLNRt.png',
-    sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=deportv' },
-      { id: 'tvpublica', label: 'TV Pública Deportes', url: 'https://live.tvpublica.ar/hls/deportes.m3u8' },
-    ],
-    link: 'https://deportv.gov.ar/',
-    sourceLabel: 'La14HD · DeporTV'
-  },
-  tnt: {
-    name: 'TNT Sports', sub: 'Deportes · Premium · Argentina', slug: 'TNT SPORTS',
-    logo: 'logos/tntsports.svg',
-    sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=tntsports' },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=tntsports' },
-      { id: 'bolaloca', label: 'BolaLoca', embed: 'https://bolaloca.my/player/3/75' },
-    ],
-    link: 'https://tntsports.com.ar/',
-    sourceLabel: 'Proxy La14HD'
-  },
-  espnpremium: {
-    name: 'ESPN Premium', sub: 'Deportes · Premium · Argentina', slug: 'ESPN PREMIUM',
-    logo: 'logos/espnpremium.svg',
-    sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=espnpremium' },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=espnpremium' },
-      { id: 'bolaloca', label: 'BolaLoca', embed: 'https://bolaloca.my/player/3/76' },
-    ],
-    link: 'https://espn.com.ar/',
-    sourceLabel: 'Proxy La14HD'
-  },
-  espn1: {
-    name: 'ESPN 1', sub: 'Deportes · Argentina', slug: 'ESPN 1',
-    logo: 'logos/espn_wordmark.png',
-    sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canales.php?stream=espn' },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=espn' },
-    ],
-    link: 'https://espn.com.ar/',
-    sourceLabel: 'Proxy La14HD'
-  },
-  foxsports: {
-    name: 'Fox Sports 1', sub: 'Deportes · Argentina', slug: 'FOX SPORTS',
-    logo: 'logos/foxsports.png',
-    sources: [
-      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canales.php?stream=foxsports' },
-      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=fox1ar' },
-    ],
-    link: 'https://foxsports.com.ar/',
-    sourceLabel: 'Proxy La14HD'
   }
 }
 
@@ -335,6 +256,7 @@ let currentChannel = 'trece'
 let currentSource = null
 let hlsInstance = null
 let retryTimer = null
+let la14Retries = 0
 
 const player = document.getElementById('player')
 const embedFrame = document.getElementById('embedFrame')
@@ -378,13 +300,11 @@ function saveProxy() {
 function reloadCurrentSource() {
   const ch = CHANNELS[currentChannel]
   const src = ch.sources.find(s => s.id === currentSource)
-  if (src && !src.embed) loadSource(src)
+  if (src) loadSource(src)
 }
 
 function proxyUrlFor(rawUrl) {
   if (!proxyEnabled) return rawUrl
-
-  // If user provided a custom proxy URL, use it
   if (proxyUrl) {
     try {
       const u = new URL(rawUrl)
@@ -393,9 +313,7 @@ function proxyUrlFor(rawUrl) {
       return rawUrl
     }
   }
-
-  // No custom URL → use the Cloudflare Worker as default
-  const defaultProxy = 'https://hls-proxy.carlosdimare.workers.dev'
+  const defaultProxy = LA14_WORKER
   try {
     const u = new URL(rawUrl)
     return defaultProxy + '/proxy?url=' + encodeURIComponent(rawUrl) + '&ref=' + encodeURIComponent(u.hostname)
@@ -404,19 +322,30 @@ function proxyUrlFor(rawUrl) {
   }
 }
 
+/* ─── La14HD stream URL resolver ─── */
+async function resolveLa14Url(channel, signal) {
+  // Fetch La14HD page through the existing proxy (CORS-friendly)
+  const proxyUrl = LA14_WORKER + '/proxy?url=' +
+    encodeURIComponent('https://la14hd.com/vivo/canal.php?stream=' + encodeURIComponent(channel))
+  const resp = await fetch(proxyUrl, { signal })
+  const html = await resp.text()
+  const match = html.match(/playbackURL\s*=\s*"([^"]+)"/)
+  if (!match) throw new Error('No se encontró playbackURL para ' + channel)
+  return match[1]
+}
+
 /* ─── Channel switching ─── */
 function switchChannel(id) {
   if (id === currentChannel) return
   currentChannel = id
   currentSource = null
+  la14Retries = 0
   const ch = CHANNELS[id]
   if (!ch) return
 
-  // sidebar active
   document.querySelectorAll('.ch-item').forEach(el => el.classList.remove('active'))
   document.querySelector(`.ch-item[data-channel="${id}"]`)?.classList.add('active')
 
-  // header
   document.getElementById('hLogo').src = ch.logo
   document.getElementById('hName').textContent = ch.name
   document.getElementById('hSub').textContent = ch.sub
@@ -426,7 +355,6 @@ function switchChannel(id) {
   document.getElementById('watermark').textContent = ch.slug.toUpperCase()
   document.getElementById('statusRes').textContent = ''
 
-  // sources
   const group = document.getElementById('srcGroup')
   group.innerHTML = ''
   ch.sources.forEach((src, i) => {
@@ -438,7 +366,6 @@ function switchChannel(id) {
     group.appendChild(btn)
   })
 
-  // load first source
   pickSource(ch.sources[0].id)
 }
 
@@ -448,6 +375,7 @@ function pickSource(id) {
   const src = ch.sources.find(s => s.id === id)
   if (!src) return
   currentSource = id
+  la14Retries = 0
 
   document.querySelectorAll('#srcGroup .src-btn').forEach(el => {
     el.classList.toggle('active', el.dataset.srcId === id)
@@ -463,13 +391,20 @@ function showError(msg) {
   setTimeout(() => errorMsg.style.display = 'none', 8000)
 }
 
-/* ─── Load source (HLS or embed) ─── */
+/* ─── Load source (HLS, embed, or La14HD-resolved) ─── */
+let la14AbortController = null
+
 function loadSource(src) {
   destroyHls()
+  if (la14AbortController) {
+    la14AbortController.abort()
+    la14AbortController = null
+  }
   placeholder.classList.add('hidden')
 
   const proxyIndicator = document.getElementById('statusProxy')
 
+  // Embed source
   if (src.embed) {
     player.style.display = 'none'
     embedFrame.style.display = ''
@@ -482,7 +417,40 @@ function loadSource(src) {
     return
   }
 
-  // HLS source
+  // La14HD-resolved source
+  if (src.la14) {
+    player.style.display = ''
+    embedFrame.style.display = 'none'
+    placeholder.classList.remove('hidden')
+    placeholder.textContent = 'Obteniendo stream...'
+    document.getElementById('statusRes').textContent = ''
+    proxyIndicator.style.display = 'none'
+
+    la14AbortController = new AbortController()
+    const signal = la14AbortController.signal
+
+    resolveLa14Url(src.la14, signal)
+      .then(hlsUrl => {
+        la14AbortController = null
+        placeholder.textContent = 'Conectando...'
+        startHls(hlsUrl, src)
+      })
+      .catch(err => {
+        la14AbortController = null
+        if (err.name === 'AbortError') return
+        la14Retries++
+        if (la14Retries < 3) {
+          placeholder.textContent = 'Reintentando (' + la14Retries + '/3)...'
+          setTimeout(() => loadSource(src), 2000)
+        } else {
+          showError('La14HD: ' + err.message)
+          placeholder.textContent = 'Error al obtener stream'
+        }
+      })
+    return
+  }
+
+  // Direct HLS source (launch via HLS.js)
   player.style.display = ''
   embedFrame.style.display = 'none'
   placeholder.classList.remove('hidden')
@@ -490,15 +458,18 @@ function loadSource(src) {
 
   const hlsUrl = src.direct ? src.url : proxyUrlFor(src.url)
   proxyIndicator.style.display = proxyEnabled && !src.direct ? '' : 'none'
+  startHls(hlsUrl, src)
+}
 
+function startHls(hlsUrl, src) {
   if (!Hls.isSupported()) {
     if (player.canPlayType('application/vnd.apple.mpegurl')) {
       player.src = hlsUrl
       player.addEventListener('loadedmetadata', () => {
         player.play().catch(() => showError('Autoplay bloqueado. Tocá en el video.'))
         placeholder.classList.add('hidden')
-      })
-      player.addEventListener('error', () => showError('Error al cargar el stream nativo'))
+      }, { once: true })
+      player.addEventListener('error', () => showError('Error al cargar el stream nativo'), { once: true })
       return
     }
     placeholder.textContent = 'HLS no soportado en este navegador'

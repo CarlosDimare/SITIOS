@@ -54,6 +54,36 @@ export default {
         }))
       }
 
+      // ─── /la14 — Extrae playbackURL de La14HD ───
+      // Uso: /la14?channel=telefe  →  { url: "https://fubohd.com:443/telefe/mono.m3u8?token=..." }
+      if (url.pathname === '/la14') {
+        const channel = url.searchParams.get('channel')
+        if (!channel) {
+          return cors(new Response(JSON.stringify({ error: 'Missing ?channel' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          }))
+        }
+        const la14Url = `https://la14hd.com/vivo/canal.php?stream=${encodeURIComponent(channel)}`
+        const resp = await fetch(la14Url, {
+          headers: { 'User-Agent': DEFAULT_UA },
+        })
+        if (!resp.ok) {
+          return cors(new Response(JSON.stringify({ error: 'La14HD returned ' + resp.status }), {
+            status: 502, headers: { 'content-type': 'application/json' },
+          }))
+        }
+        const html = await resp.text()
+        const match = html.match(/playbackURL\s*=\s*"([^"]+)"/)
+        if (!match) {
+          return cors(new Response(JSON.stringify({ error: 'playbackURL not found in La14HD page' }), {
+            status: 502, headers: { 'content-type': 'application/json' },
+          }))
+        }
+        return cors(new Response(JSON.stringify({ url: match[1], channel }), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-cache' },
+        }))
+      }
+
       const targetUrl = url.searchParams.get('url')
       if (!targetUrl) {
         return cors(new Response('Missing ?url parameter', { status: 400 }))
