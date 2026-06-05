@@ -206,7 +206,7 @@ const CHANNELS = {
     name: 'Canal 13', sub: 'El Trece · Buenos Aires · Argentina', slug: 'EL TRECE',
     logo: 'logos/canal13.svg',
     sources: [
-      { id: 'cdn1', label: 'VODGC', url: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8' },
+      { id: 'cdn1', label: 'VODGC', url: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', direct: true },
     ],
     link: 'https://www.eltrecetv.com.ar/vivo/',
     sourceLabel: 'Artear / VODGC'
@@ -245,7 +245,7 @@ const CHANNELS = {
     name: 'TyC Sports', sub: 'Deportes · Argentina', slug: 'TYC SPORTS',
     logo: 'logos/TyC_Sports_logo.svg',
     sources: [
-      { id: 'amagi', label: 'Amagi CDN', url: 'https://amg26268-amg26268c14-freelivesports-emea-10267.playouts.now.amagi.tv/ts-us-e2-n2/playlist/amg26268-sportsstudio-tycsports-freelivesportsemea/playlist.m3u8' },
+      { id: 'amagi', label: 'Amagi CDN', url: 'https://amg26268-amg26268c14-freelivesports-emea-10267.playouts.now.amagi.tv/ts-us-e2-n2/playlist/amg26268-sportsstudio-tycsports-freelivesportsemea/playlist.m3u8', direct: true },
     ],
     link: 'https://tycsports.com/',
     sourceLabel: 'Amagi CDN'
@@ -324,14 +324,33 @@ function proxyUrlFor(rawUrl) {
 
 /* ─── La14HD stream URL resolver ─── */
 async function resolveLa14Url(channel, signal) {
-  // Fetch La14HD page through the existing proxy (CORS-friendly)
-  const proxyUrl = LA14_WORKER + '/proxy?url=' +
-    encodeURIComponent('https://la14hd.com/vivo/canal.php?stream=' + encodeURIComponent(channel))
-  const resp = await fetch(proxyUrl, { signal })
-  const html = await resp.text()
-  const match = html.match(/playbackURL\s*=\s*"([^"]+)"/)
-  if (!match) throw new Error('No se encontró playbackURL para ' + channel)
-  return match[1]
+  // Try /la14 endpoint first (faster, less bandwidth)
+  const tryEndpoint = async () => {
+    const resp = await fetch(LA14_WORKER + '/la14?channel=' + encodeURIComponent(channel), {
+      signal, headers: { 'Accept': 'application/json' },
+    })
+    if (!resp.ok) throw new Error('endpoint ' + resp.status)
+    const data = await resp.json()
+    if (!data.url) throw new Error('no url')
+    return data.url
+  }
+
+  // Fallback: proxy entire La14HD HTML page and parse
+  const tryProxy = async () => {
+    const proxyUrl = LA14_WORKER + '/proxy?url=' +
+      encodeURIComponent('https://la14hd.com/vivo/canal.php?stream=' + encodeURIComponent(channel))
+    const resp = await fetch(proxyUrl, { signal })
+    const html = await resp.text()
+    const match = html.match(/playbackURL\s*=\s*"([^"]+)"/)
+    if (!match) throw new Error('playbackURL no encontrado para ' + channel)
+    return match[1]
+  }
+
+  try {
+    return await tryEndpoint()
+  } catch {
+    return await tryProxy()
+  }
 }
 
 /* ─── Channel switching ─── */
