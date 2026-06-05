@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Canal 13 Argentina · En Vivo</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
@@ -28,21 +29,21 @@
   @keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.6)}50%{box-shadow:0 0 0 5px rgba(231,76,60,0)}}
 
   .video-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden;min-height:0}
-  .video-wrap iframe{width:100%;height:100%;border:none;background:#000}
-  .video-wrap iframe.hidden{display:none}
+  .video-wrap iframe,.video-wrap video{width:100%;height:100%;border:none;background:#000;object-fit:contain}
+  .video-wrap iframe.hidden,.video-wrap video.hidden{display:none}
 
   .watermark{position:absolute;bottom:12px;right:16px;opacity:.06;pointer-events:none;z-index:2;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:#fff}
 
-  .status-bar{background:var(--surface);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap}
+  .status-bar{background:var(--surface);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
   .status-bar a{color:var(--muted);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;text-decoration:none;transition:color .2s}
   .status-bar a:hover{color:var(--accent)}
 
-  .src-group{display:flex;gap:4px;margin-left:8px}
-  .src-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .src-group{display:flex;gap:3px}
+  .src-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:.5px;padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .15s;white-space:nowrap}
   .src-btn:hover{border-color:var(--accent);color:var(--accent)}
   .src-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 
-  .fs-btn{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+  .fs-btn{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:4px}
   .fs-btn:hover{border-color:var(--accent);color:var(--accent)}
   .fs-btn svg{width:14px;height:14px}
 
@@ -69,16 +70,18 @@
   </header>
 
   <div class="video-wrap" id="videoWrap">
-    <iframe id="playerOficial" src="https://api.vodgc.net/player/v2/embed/playerId/PRZ9KU1515679151/contentId/1427089" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="eager" importance="high" title="Canal 13 - Oficial"></iframe>
-    <iframe id="playerLHDTV" class="hidden" src="https://www.livehdtv.com/embed/el-trece/" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="lazy" title="Canal 13 - LiveHDTV"></iframe>
+    <iframe id="pOficial" src="https://api.vodgc.net/player/v2/embed/playerId/PRZ9KU1515679151/contentId/1427089" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="eager" importance="high" title="Oficial"></iframe>
+    <iframe id="pLhdtv" class="hidden" src="https://www.livehdtv.com/embed/el-trece/" allow="autoplay; fullscreen; encrypted-media" allowfullscreen loading="lazy" title="LiveHDTV"></iframe>
+    <video id="pDirecto" class="hidden" muted autoplay playsinline preload="auto" title="Directo"></video>
     <div class="watermark">CANAL 13</div>
   </div>
 
   <div class="status-bar">
-    <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Señal oficial · Artear</span>
+    <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Artear</span>
     <div class="src-group">
-      <button class="src-btn active" data-src="oficial" onclick="switchSrc('oficial')">Oficial</button>
-      <button class="src-btn" data-src="l_hdtv" onclick="switchSrc('l_hdtv')">LiveHDTV</button>
+      <button class="src-btn active" onclick="pick('oficial')">Oficial</button>
+      <button class="src-btn" onclick="pick('lhdtv')">LiveHDTV</button>
+      <button class="src-btn" onclick="pick('directo')">Directo</button>
     </div>
     <span style="flex:1"></span>
     <a href="https://www.eltrecetv.com.ar/vivo/" target="_blank" rel="noopener">eltrecetv.com.ar</a>
@@ -90,15 +93,38 @@
 </div>
 
 <script>
-const PLAYERS = { oficial: 'playerOficial', l_hdtv: 'playerLHDTV' }
+const PLAYERS = { oficial: 'pOficial', lhdtv: 'pLhdtv', directo: 'pDirecto' }
+const M3U8 = 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8'
+let hlsInstance = null
 
-function switchSrc(id) {
-  document.querySelectorAll('.video-wrap iframe').forEach(el => el.classList.add('hidden'))
+function pick(id) {
+  document.querySelectorAll('.video-wrap iframe, .video-wrap video').forEach(el => el.classList.add('hidden'))
   document.querySelectorAll('.src-btn').forEach(el => el.classList.remove('active'))
+  document.querySelector('.src-btn[onclick*="' + id + '"]')?.classList.add('active')
   const el = document.getElementById(PLAYERS[id])
-  if (el) el.classList.remove('hidden')
-  const btn = document.querySelector('.src-btn[data-src="' + id + '"]')
-  if (btn) btn.classList.add('active')
+  if (!el) return
+  el.classList.remove('hidden')
+
+  if (id === 'directo') {
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+    if (!el.src || el.src === '') {
+      el.src = '' // clear
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          xhrSetup(xhr) { xhr.setRequestHeader('Referer', 'https://vodgc.net') }
+        })
+        hls.loadSource(M3U8)
+        hls.attachMedia(el)
+        hls.on(Hls.Events.MANIFEST_PARSED, () => el.play().catch(() => {}))
+        hlsInstance = hls
+      } else if (el.canPlayType('application/vnd.apple.mpegurl')) {
+        el.src = M3U8
+        el.addEventListener('loadedmetadata', () => el.play().catch(() => {}))
+      }
+    }
+  } else {
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+  }
 }
 
 function toggleFS() {
