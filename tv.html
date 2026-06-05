@@ -61,7 +61,10 @@
   @keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.6)}50%{box-shadow:0 0 0 5px rgba(231,76,60,0)}}
 
   .video-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden;min-height:0}
-  .video-wrap video{width:100%;height:100%;border:none;background:#000;object-fit:contain}
+  .video-wrap video,.video-wrap iframe{width:100%;height:100%;border:none;background:#000}
+  .video-wrap video{object-fit:contain}
+  .video-wrap iframe{position:absolute;top:0;left:0;z-index:1}
+  .hidden { display: none !important }
   .video-wrap .placeholder{color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-align:center}
 
   .error-msg{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:var(--accent2);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.25);padding:6px 14px;border-radius:6px;display:none;z-index:3;text-align:center;max-width:80%}
@@ -100,7 +103,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <span class="logo">TV</span>
-      <span class="logo-sub">Solo M3U · HLS Directo</span>
+      <span class="logo-sub">M3U + Embed · En Vivo</span>
     </div>
 
     <div class="grp-label">General</div>
@@ -135,8 +138,28 @@
       </button>
     </div>
 
+    <div class="grp-label">Premium</div>
+    <div class="ch-list">
+      <button class="ch-item" data-channel="tnt" onclick="switchChannel('tnt')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/TNT_Sports_Argentina_2023.svg/200px-TNT_Sports_Argentina_2023.svg.png" alt="TNT Sports" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">TNT Sports</span><span class="tag">EMBED</span></span>
+      </button>
+      <button class="ch-item" data-channel="espnpremium" onclick="switchChannel('espnpremium')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/ESPN_Premium_Argentina_logo_2023.svg/200px-ESPN_Premium_Argentina_logo_2023.svg.png" alt="ESPN Premium" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">ESPN Premium</span><span class="tag">EMBED</span></span>
+      </button>
+      <button class="ch-item" data-channel="espn1" onclick="switchChannel('espn1')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/ESPN_wordmark.svg/200px-ESPN_wordmark.svg.png" alt="ESPN 1" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">ESPN 1</span><span class="tag">EMBED</span></span>
+      </button>
+      <button class="ch-item" data-channel="foxsports" onclick="switchChannel('foxsports')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Fox_Sports_2020_logo.svg/200px-Fox_Sports_2020_logo.svg.png" alt="Fox Sports" onerror="this.style.display='none'" crossorigin="anonymous">
+        <span class="ch-label"><span class="name">Fox Sports 1</span><span class="tag">EMBED</span></span>
+      </button>
+    </div>
+
     <div class="src-section" id="srcSection">
-      <div class="src-label" id="srcLabel">Fuente HLS</div>
+      <div class="src-label" id="srcLabel">Fuente</div>
       <div class="src-group" id="srcGroup"></div>
     </div>
 
@@ -157,6 +180,7 @@
 
     <div class="video-wrap" id="videoWrap">
       <video id="player" muted autoplay playsinline preload="auto" title="Directo"></video>
+      <iframe class="embed-frame" id="embedFrame" allow="autoplay; encrypted-media" allowfullscreen style="display:none"></iframe>
       <div class="placeholder hidden" id="placeholder">Cargando stream...</div>
       <div class="error-msg" id="errorMsg"></div>
       <div class="watermark" id="watermark">TV ARG</div>
@@ -237,6 +261,48 @@ const CHANNELS = {
     ],
     link: 'https://deportv.gov.ar/',
     sourceLabel: 'Radio y TV Pública'
+  },
+  tnt: {
+    name: 'TNT Sports', sub: 'Deportes · Premium · Argentina', slug: 'TNT SPORTS',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/TNT_Sports_Argentina_2023.svg/200px-TNT_Sports_Argentina_2023.svg.png',
+    sources: [
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=tntsports' },
+      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=tntsports' },
+      { id: 'bolaloca', label: 'BolaLoca', embed: 'https://bolaloca.my/player/3/75' },
+    ],
+    link: 'https://tntsports.com.ar/',
+    sourceLabel: 'Proxy La14HD'
+  },
+  espnpremium: {
+    name: 'ESPN Premium', sub: 'Deportes · Premium · Argentina', slug: 'ESPN PREMIUM',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/ESPN_Premium_Argentina_logo_2023.svg/200px-ESPN_Premium_Argentina_logo_2023.svg.png',
+    sources: [
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canal.php?stream=espnpremium' },
+      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=espnpremium' },
+      { id: 'bolaloca', label: 'BolaLoca', embed: 'https://bolaloca.my/player/3/76' },
+    ],
+    link: 'https://espn.com.ar/',
+    sourceLabel: 'Proxy La14HD'
+  },
+  espn1: {
+    name: 'ESPN 1', sub: 'Deportes · Argentina', slug: 'ESPN 1',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/ESPN_wordmark.svg/200px-ESPN_wordmark.svg.png',
+    sources: [
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canales.php?stream=espn' },
+      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=espn' },
+    ],
+    link: 'https://espn.com.ar/',
+    sourceLabel: 'Proxy La14HD'
+  },
+  foxsports: {
+    name: 'Fox Sports 1', sub: 'Deportes · Argentina', slug: 'FOX SPORTS',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Fox_Sports_2020_logo.svg/200px-Fox_Sports_2020_logo.svg.png',
+    sources: [
+      { id: 'la14', label: 'La14HD', embed: 'https://la14hd.com/vivo/canales.php?stream=foxsports' },
+      { id: 'streamtp', label: 'StreamTP', embed: 'https://streamtp-x-y-z.ws/global1.php?stream=fox1ar' },
+    ],
+    link: 'https://foxsports.com.ar/',
+    sourceLabel: 'Proxy La14HD'
   }
 }
 
@@ -245,6 +311,7 @@ let currentSource = null
 let hlsInstance = null
 let retryTimer = null
 const player = document.getElementById('player')
+const embedFrame = document.getElementById('embedFrame')
 const placeholder = document.getElementById('placeholder')
 const errorMsg = document.getElementById('errorMsg')
 
@@ -307,10 +374,25 @@ function showError(msg) {
   setTimeout(() => errorMsg.style.display = 'none', 8000)
 }
 
-/* ─── Load HLS source ─── */
+/* ─── Load source (HLS or embed) ─── */
 function loadSource(src) {
   destroyHls()
+  placeholder.classList.add('hidden')
+
+  if (src.embed) {
+    player.style.display = 'none'
+    embedFrame.style.display = ''
+    placeholder.classList.remove('hidden')
+    placeholder.textContent = 'Cargando embed...'
+    embedFrame.src = src.embed
+    embedFrame.onload = () => placeholder.classList.add('hidden')
+    document.getElementById('statusRes').textContent = 'EMBED'
+    return
+  }
+
+  // HLS source
   player.style.display = ''
+  embedFrame.style.display = 'none'
   placeholder.classList.remove('hidden')
   placeholder.textContent = 'Conectando...'
 
@@ -374,6 +456,8 @@ function destroyHls() {
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
   player.removeAttribute('src')
   player.load()
+  embedFrame.src = ''
+  embedFrame.style.display = 'none'
 }
 
 /* ─── Fullscreen ─── */
