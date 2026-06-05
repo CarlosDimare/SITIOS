@@ -46,7 +46,8 @@ input:focus{border-color:#f59e0b}
 <header>
   <h1>▶ haz ver</h1>
   <input id="search" type="text" placeholder="Buscar película o serie...">
-  <div class="categories" id="categories"></div>
+  <div class="categories" id="media-types" style="display:flex;gap:6px;flex-wrap:wrap;width:100%"></div>
+  <div class="categories" id="categories" style="width:100%"></div>
 </header>
 <div class="grid" id="grid"></div>
 <div class="modal-overlay" id="modal">
@@ -56,6 +57,12 @@ input:focus{border-color:#f59e0b}
       <button class="btn-close" id="btn-close">&times;</button>
     </div>
     <div class="providers" id="providers"></div>
+    <div class="episode-picker" id="episode-picker" style="display:none;padding:8px 18px;border-bottom:1px solid #1a1a2e;gap:8px;flex-wrap:wrap;align-items:center">
+      <label style="font-size:12px;color:#aaa">Temporada</label>
+      <select id="season-select" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 8px;color:#e0e0e0;font-size:12px"></select>
+      <label style="font-size:12px;color:#aaa">Episodio</label>
+      <select id="episode-select" style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:4px 8px;color:#e0e0e0;font-size:12px"></select>
+    </div>
     <div class="player-wrap" id="player-wrap"><div class="loading" id="player-loading"><div class="spinner"></div></div></div>
   </div>
 </div>
@@ -65,12 +72,21 @@ const TMDB_KEY = '8265bd1679663a7ea12ac168da84d2e8'
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w185'
 
 const TMDB = {
-  trending: page => `https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_KEY}&page=${page}`,
-  popular: page => `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_KEY}&page=${page}&region=AR`,
-  upcoming: page => `https://api.themoviedb.org/3/movie/upcoming?api_key=${TMDB_KEY}&page=${page}&region=AR`,
-  topRated: page => `https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_KEY}&page=${page}`,
-  search: q => `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&page=1&region=AR`,
-  discover: page => `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&sort_by=release_date.desc&page=${page}&region=AR`,
+  movie: {
+    trending: page => `https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_KEY}&page=${page}`,
+    popular: page => `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_KEY}&page=${page}&region=AR`,
+    upcoming: page => `https://api.themoviedb.org/3/movie/upcoming?api_key=${TMDB_KEY}&page=${page}&region=AR`,
+    topRated: page => `https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_KEY}&page=${page}`,
+  },
+  tv: {
+    trending: page => `https://api.themoviedb.org/3/trending/tv/week?api_key=${TMDB_KEY}&page=${page}`,
+    popular: page => `https://api.themoviedb.org/3/tv/popular?api_key=${TMDB_KEY}&page=${page}&region=AR`,
+    airing: page => `https://api.themoviedb.org/3/tv/on_the_air?api_key=${TMDB_KEY}&page=${page}`,
+    topRated: page => `https://api.themoviedb.org/3/tv/top_rated?api_key=${TMDB_KEY}&page=${page}`,
+  },
+  search: q => `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&page=1&region=AR`,
+  tvDetail: id => `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_KEY}`,
+  tvSeason: (id, s) => `https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB_KEY}`,
 }
 
 // ─── Providers ──────────────────────────────────────────────
@@ -158,11 +174,14 @@ adObserver.observe(document.body, { childList: true, subtree: true, attributes: 
 setInterval(scanForAds, 2000)
 
 // ─── State ──────────────────────────────────────────────────
-let allMovies = []
+let allItems = []
 let currentId = null
 let currentType = 'movie'
 let currentProvider = PROVIDERS[0]
 let currentCategory = 'trending'
+let currentMediaType = 'movie'
+let currentSeason = 1
+let currentEpisode = 1
 
 // ─── DOM refs ───────────────────────────────────────────────
 const $ = s => document.querySelector(s)
@@ -174,17 +193,72 @@ const providersEl = $('#providers')
 const playerWrap = $('#player-wrap')
 const btnClose = $('#btn-close')
 const categories = $('#categories')
+const mediaTypes = $('#media-types')
+
+// ─── Categories ─────────────────────────────────────────────
+const MEDIA_TYPES = [
+  { id: 'movie', label: 'Películas' },
+  { id: 'tv', label: 'Series' },
+]
+const CATEGORIES = {
+  movie: [
+    { id: 'trending', label: 'Tendencias' },
+    { id: 'popular', label: 'Populares' },
+    { id: 'upcoming', label: 'Próximos' },
+    { id: 'topRated', label: 'Mejor puntuadas' },
+  ],
+  tv: [
+    { id: 'trending', label: 'Tendencias' },
+    { id: 'popular', label: 'Populares' },
+    { id: 'airing', label: 'Al aire' },
+    { id: 'topRated', label: 'Mejor puntuadas' },
+  ],
+}
+
+// Render media type toggle + first category buttons
+function renderCategories() {
+  mediaTypes.innerHTML = MEDIA_TYPES.map(mt =>
+    `<button class="cat ${mt.id === currentMediaType ? 'active' : ''}" onclick="switchMediaType('${mt.id}')">${mt.label}</button>`
+  ).join('')
+  const cats = CATEGORIES[currentMediaType] || CATEGORIES.movie
+  currentCategory = cats[0].id
+  categories.innerHTML = cats.map(c =>
+    `<button class="cat ${c.id === currentCategory ? 'active' : ''}" onclick="switchCategory('${c.id}')">${c.label}</button>`
+  ).join('')
+}
+
+window.switchMediaType = function(mt) {
+  currentMediaType = mt
+  currentCategory = CATEGORIES[mt][0].id
+  const cats = CATEGORIES[mt]
+  mediaTypes.querySelectorAll('button').forEach(b => b.classList.remove('active'))
+  mediaTypes.querySelector(`[onclick*="${mt}"]`)?.classList.add('active')
+  categories.innerHTML = cats.map(c =>
+    `<button class="cat ${c.id === currentCategory ? 'active' : ''}" onclick="switchCategory('${c.id}')">${c.label}</button>`
+  ).join('')
+  search.value = ''
+  loadContent()
+}
+
+window.switchCategory = function(id) {
+  currentCategory = id
+  categories.querySelectorAll('button').forEach(b => b.classList.remove('active'))
+  categories.querySelector(`[onclick*="${id}"]`)?.classList.add('active')
+  search.value = ''
+  loadContent()
+}
 
 // ─── API ────────────────────────────────────────────────────
-async function fetchMovies(category, page = 1) {
-  const url = TMDB[category] ? TMDB[category](page) : TMDB.trending(page)
+async function fetchContent(category, mediaType, page = 1) {
+  const endpoints = TMDB[mediaType]
+  const url = endpoints && endpoints[category] ? endpoints[category](page) : TMDB.movie.trending(page)
   const res = await fetch(url)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
   return data.results || []
 }
 
-async function searchMovies(query) {
+async function searchContent(query) {
   const res = await fetch(TMDB.search(query))
   if (!res.ok) throw new Error('search fail')
   const data = await res.json()
@@ -192,32 +266,36 @@ async function searchMovies(query) {
 }
 
 // ─── Render ─────────────────────────────────────────────────
-function renderMovies(movies) {
-  grid.innerHTML = movies.length
-    ? movies.map(m => {
-        const title = m.title || m.original_title || 'Sin título'
-        const year = (m.release_date || '').slice(0,4) || ''
+function renderItems(items) {
+  grid.innerHTML = items.length
+    ? items.map(m => {
+        const isTv = m.media_type === 'tv' || currentMediaType === 'tv'
+        const title = isTv ? (m.name || m.original_name) : (m.title || m.original_title || 'Sin título')
+        const year = (m.release_date || m.first_air_date || '').slice(0,4) || ''
         const rating = m.vote_average ? m.vote_average.toFixed(1) : ''
+        const typeLabel = isTv ? 'SERIE' : 'PELI'
         const img = m.poster_path
           ? `${TMDB_IMG}${m.poster_path}`
           : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 185 278"><rect fill="%231a1a2e" width="185" height="278"/><text x="50%" y="50%" fill="%23444" font-size="40" text-anchor="middle" dy=".35em">🎬</text></svg>'
-        return `<div class="card" onclick="openPlayer(${m.id},'movie')">
+        return `<div class="card" onclick="openPlayer(${m.id},'${isTv ? 'tv' : 'movie'}')">
           <img src="${img}" loading="lazy" alt="${title}">
           <div class="info">
             <h3>${title}</h3>
-            <div><span class="year">${year}</span>${rating ? ` <span class="rating">★ ${rating}</span>` : ''}</div>
+            <div><span class="year">${year}</span>${rating ? ` <span class="rating">★ ${rating}</span>` : ''} <span style="font-size:10px;color:#f59e0b">${typeLabel}</span></div>
           </div>
         </div>`
       }).join('')
     : '<div class="error">Sin resultados 😕</div>'
 }
 
-async function loadMovies(category = currentCategory, page = 1) {
-  currentCategory = category
+async function loadContent(category, mediaType, page = 1) {
+  category = category || currentCategory
+  mediaType = mediaType || currentMediaType
   grid.innerHTML = '<div class="loading"><div class="spinner"></div>Cargando...</div>'
   try {
-    allMovies = await fetchMovies(category, page)
-    renderMovies(allMovies)
+    const items = await fetchContent(category, mediaType, page)
+    allItems = items
+    renderItems(items)
   } catch (e) {
     grid.innerHTML = '<div class="error">Error al cargar. Probá recargar la página.</div>'
   }
@@ -227,6 +305,8 @@ async function loadMovies(category = currentCategory, page = 1) {
 window.openPlayer = function(id, type = 'movie', season, episode) {
   currentId = id
   currentType = type
+  currentSeason = season || 1
+  currentEpisode = episode || 1
   modal.classList.add('open')
   modalTitle.textContent = 'Cargando...'
 
@@ -234,27 +314,82 @@ window.openPlayer = function(id, type = 'movie', season, episode) {
     `<button class="${p.id === currentProvider.id ? 'active' : ''}" onclick="switchProvider('${p.id}')">${p.name}</button>`
   ).join('')
 
-  loadStream(id, type, season, episode)
+  // Episode picker for series
+  const picker = document.getElementById('episode-picker')
+  const sSel = document.getElementById('season-select')
+  const eSel = document.getElementById('episode-select')
+  if (type === 'tv') {
+    picker.style.display = 'flex'
+    // Fetch seasons from TMDB
+    fetch(TMDB.tvDetail(id))
+      .then(r => r.json())
+      .then(d => {
+        const seasons = (d.seasons || []).filter(s => s.season_number > 0)
+        if (seasons.length) {
+          sSel.innerHTML = seasons.map(s => `<option value="${s.season_number}" ${s.season_number === currentSeason ? 'selected' : ''}>${s.season_number} — ${s.name || 'Temporada ' + s.season_number}</option>`).join('')
+          loadEpisodes(id, seasons[0].season_number)
+        } else {
+          sSel.innerHTML = `<option value="1">Temporada 1</option>`
+          eSel.innerHTML = `<option value="1">Episodio 1</option>`
+        }
+      })
+      .catch(() => {
+        sSel.innerHTML = `<option value="1">Temporada 1</option>`
+        eSel.innerHTML = `<option value="1">Episodio 1</option>`
+      })
+  } else {
+    picker.style.display = 'none'
+  }
+
+  loadStream(id, type, currentSeason, currentEpisode)
 }
+
+function loadEpisodes(tvId, seasonNum) {
+  const eSel = document.getElementById('episode-select')
+  fetch(TMDB.tvSeason(tvId, seasonNum))
+    .then(r => r.json())
+    .then(d => {
+      const eps = d.episodes || []
+      if (eps.length) {
+        eSel.innerHTML = eps.map(e => `<option value="${e.episode_number}" ${e.episode_number === currentEpisode ? 'selected' : ''}>${e.episode_number} — ${e.name || 'Episodio ' + e.episode_number}</option>`).join('')
+      } else {
+        eSel.innerHTML = `<option value="1">Episodio 1</option>`
+      }
+    })
+    .catch(() => {
+      eSel.innerHTML = `<option value="1">Episodio 1</option>`
+    })
+}
+
+// Season/episode select change → reload player
+document.getElementById('season-select').addEventListener('change', function() {
+  currentSeason = parseInt(this.value)
+  currentEpisode = 1
+  document.getElementById('episode-select').value = '1'
+  loadEpisodes(currentId, currentSeason)
+  // Don't auto-reload — let user pick episode first
+})
+document.getElementById('episode-select').addEventListener('change', function() {
+  currentEpisode = parseInt(this.value)
+  if (currentId) loadStream(currentId, currentType, currentSeason, currentEpisode)
+})
 
 function switchProvider(providerId) {
   currentProvider = PROVIDERS.find(p => p.id === providerId) || PROVIDERS[0]
   providersEl.querySelectorAll('button').forEach(b => b.classList.remove('active'))
   providersEl.querySelector(`[onclick*="${providerId}"]`)?.classList.add('active')
-  loadStream(currentId, currentType)
+  loadStream(currentId, currentType, currentSeason, currentEpisode)
 }
 
 function loadStream(id, type, season, episode) {
   const url = type === 'movie'
     ? currentProvider.movie(id)
     : currentProvider.tv(id, season || 1, episode || 1)
-  // Mostrar spinner mientras carga
   playerWrap.innerHTML = '<div class="loading" id="player-loading"><div class="spinner"></div>Cargando reproductor...</div>'
   const iframe = document.createElement('iframe')
   iframe.allow = 'autoplay; fullscreen; picture-in-picture'
   iframe.allowFullscreen = true
   iframe.onload = () => {
-    // Quitar spinner cuando cargue (nunca tocar el iframe)
     const loading = document.getElementById('player-loading')
     if (loading) loading.remove()
   }
@@ -265,38 +400,22 @@ function loadStream(id, type, season, episode) {
   playerWrap.appendChild(iframe)
 }
 
-// ─── Categories ─────────────────────────────────────────────
-const CATEGORIES = [
-  { id: 'trending', label: 'Tendencias' },
-  { id: 'popular', label: 'Populares' },
-  { id: 'upcoming', label: 'Próximos' },
-  { id: 'topRated', label: 'Mejor puntuadas' },
-]
-categories.innerHTML = CATEGORIES.map(c =>
-  `<button class="cat ${c.id === currentCategory ? 'active' : ''}" onclick="switchCategory('${c.id}')">${c.label}</button>`
-).join('')
-
-window.switchCategory = function(id) {
-  currentCategory = id
-  categories.querySelectorAll('button').forEach(b => b.classList.remove('active'))
-  categories.querySelector(`[onclick*="${id}"]`)?.classList.add('active')
-  search.value = ''
-  loadMovies(id)
-}
-
 // ─── Search ─────────────────────────────────────────────────
 let searchTimer
 search.addEventListener('input', () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(async () => {
     const q = search.value.trim()
-    if (!q) { loadMovies(currentCategory); return }
+    if (!q) { loadContent(); return }
     grid.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando...</div>'
     try {
-      const results = await searchMovies(q)
-      renderMovies(results)
+      const results = await searchContent(q)
+      renderItems(results)
     } catch {
-      renderMovies(allMovies.filter(m => (m.title||'').toLowerCase().includes(q.toLowerCase())))
+      renderItems(allItems.filter(m => {
+        const title = m.media_type === 'tv' ? (m.name || '') : (m.title || '')
+        return title.toLowerCase().includes(q.toLowerCase())
+      }))
     }
   }, 400)
 })
@@ -307,7 +426,8 @@ modal.addEventListener('click', e => { if (e.target === modal) modal.classList.r
 document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('open') })
 
 // ─── Init ───────────────────────────────────────────────────
-loadMovies()
+renderCategories()
+loadContent()
 </script>
 </body>
 </html>
