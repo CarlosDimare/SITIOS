@@ -89,40 +89,75 @@ main{
 /* columns */
 .column{
   position:relative;border-radius:20px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:12px 6px;
+  display:flex;flex-direction:column;align-items:center;
+  padding:10px 4px;
   transition:all 0.3s ease;
   border:3px solid transparent;
+  overflow:hidden;
+}
+.col-header{
+  display:flex;flex-direction:column;align-items:center;
+  flex-shrink:0;gap:1px;
 }
 .column-like{
   background:rgba(67,160,71,0.12);
   backdrop-filter:blur(4px);
 }
-.column-like .col-icon{font-size:clamp(1.6rem,5vw,3rem)}
+.column-like .col-icon{font-size:clamp(1.3rem,4vw,2.6rem)}
 .column-like .col-label{
-  font-size:clamp(0.65rem,1.6vw,1rem);font-weight:800;
+  font-size:clamp(0.55rem,1.4vw,0.95rem);font-weight:800;
   color:#fff;text-shadow:0 1px 6px rgba(0,0,0,0.3);
-  writing-mode:horizontal-tb;text-align:center;
-  margin-top:4px;line-height:1.1;
+  text-align:center;line-height:1.1;
 }
 .column-like .col-sub{
-  font-size:clamp(0.5rem,1vw,0.75rem);font-weight:600;
-  color:rgba(255,255,255,0.7);margin-top:2px;
+  font-size:clamp(0.45rem,0.9vw,0.7rem);font-weight:600;
+  color:rgba(255,255,255,0.6);margin-top:1px;
 }
 .column-dislike{
   background:rgba(229,57,53,0.12);
   backdrop-filter:blur(4px);
 }
-.column-dislike .col-icon{font-size:clamp(1.6rem,5vw,3rem)}
+.column-dislike .col-icon{font-size:clamp(1.3rem,4vw,2.6rem)}
 .column-dislike .col-label{
-  font-size:clamp(0.65rem,1.6vw,1rem);font-weight:800;
+  font-size:clamp(0.55rem,1.4vw,0.95rem);font-weight:800;
   color:#fff;text-shadow:0 1px 6px rgba(0,0,0,0.3);
-  writing-mode:horizontal-tb;text-align:center;
-  margin-top:4px;line-height:1.1;
+  text-align:center;line-height:1.1;
 }
 .column-dislike .col-sub{
-  font-size:clamp(0.5rem,1vw,0.75rem);font-weight:600;
-  color:rgba(255,255,255,0.7);margin-top:2px;
+  font-size:clamp(0.45rem,0.9vw,0.7rem);font-weight:600;
+  color:rgba(255,255,255,0.6);margin-top:1px;
+}
+
+/* classified items inside columns */
+.column-items{
+  display:flex;flex-direction:column;gap:3px;
+  width:100%;flex:1;
+  overflow-y:auto;overflow-x:hidden;
+  padding:4px 2px;min-height:0;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.2) transparent;
+}
+.column-items::-webkit-scrollbar{width:3px}
+.column-items::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:3px}
+
+.col-item{
+  background:rgba(255,255,255,0.13);
+  backdrop-filter:blur(4px);
+  border-radius:8px;padding:3px 4px;
+  display:flex;flex-direction:column;align-items:center;
+  gap:1px;flex-shrink:0;
+  animation:colItemPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  transform-origin:center center;
+}
+.col-item-emoji{font-size:clamp(1rem,2.8vw,1.6rem);line-height:1}
+.col-item-label{
+  font-size:clamp(0.4rem,0.8vw,0.55rem);font-weight:600;
+  color:rgba(255,255,255,0.85);line-height:1;
+  text-align:center;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+@keyframes colItemPop{
+  0%{transform:scale(0);opacity:0}
+  100%{transform:scale(1);opacity:1}
 }
 
 /* column highlight during drag */
@@ -341,8 +376,11 @@ footer{
   header{padding:6px 8px 2px}
   .dot{width:8px;height:8px}
   .progress-dots{gap:4px;margin-top:3px}
-  main{grid-template-columns:minmax(55px,0.5fr) 1fr minmax(55px,0.5fr);gap:3px}
-  .column{padding:8px 3px;border-radius:14px}
+  main{grid-template-columns:minmax(64px,0.55fr) 1fr minmax(64px,0.55fr);gap:3px}
+  .column{padding:6px 2px;border-radius:14px}
+  .col-header{gap:0}
+  .column-items{padding:2px 1px;gap:2px}
+  .col-item{padding:2px 3px;border-radius:6px}
   .column-like .col-label,.column-dislike .col-label{font-size:0.6rem}
   .column-like .col-sub,.column-dislike .col-sub{display:none}
   .card-wrapper{max-width:180px}
@@ -388,9 +426,12 @@ footer{
 
   <main>
     <div class="column column-like" id="col-like">
-      <div class="col-icon">😊</div>
-      <div class="col-label">ME GUSTA</div>
-      <div class="col-sub">arrastrá acá</div>
+      <div class="col-header">
+        <div class="col-icon">😊</div>
+        <div class="col-label">ME GUSTA</div>
+        <div class="col-sub">arrastrá acá</div>
+      </div>
+      <div class="column-items" id="like-items"></div>
     </div>
 
     <div class="column column-center" id="col-center">
@@ -408,9 +449,12 @@ footer{
     </div>
 
     <div class="column column-dislike" id="col-dislike">
-      <div class="col-icon">😞</div>
-      <div class="col-label">NO ME GUSTA</div>
-      <div class="col-sub">arrastrá acá</div>
+      <div class="col-header">
+        <div class="col-icon">😞</div>
+        <div class="col-label">NO ME GUSTA</div>
+        <div class="col-sub">arrastrá acá</div>
+      </div>
+      <div class="column-items" id="dislike-items"></div>
     </div>
   </main>
 
@@ -576,6 +620,8 @@ function resetGame(){
   likeNum.textContent = '0';
   dislikeNum.textContent = '0';
   document.getElementById('confetti').innerHTML = '';
+  document.getElementById('like-items').innerHTML = '';
+  document.getElementById('dislike-items').innerHTML = '';
   buildDots();
   showCard(0);
 }
@@ -664,6 +710,16 @@ function snapBack(){
   },500);
 }
 
+function addToColumn(target, item){
+  const container = target === 'like' ? document.getElementById('like-items') : document.getElementById('dislike-items');
+  const el = document.createElement('div');
+  el.className = 'col-item';
+  el.innerHTML = `<div class="col-item-emoji">${item.emoji}</div><div class="col-item-label">${item.label}</div>`;
+  container.appendChild(el);
+  // scroll to bottom so newest is visible
+  container.scrollTop = container.scrollHeight;
+}
+
 function flyTo(target){
   isFlying = true;
   card.classList.add('flying');
@@ -672,6 +728,9 @@ function flyTo(target){
   card.style.setProperty('--dx',flyX+'px');
   card.style.setProperty('--dy','0px');
   card.style.setProperty('--rot',(isLike?-15:15)+'deg');
+
+  const item = items[currentIdx];
+  addToColumn(target, item);
 
   // update score
   if(isLike){
@@ -691,7 +750,6 @@ function flyTo(target){
   colLike.classList.remove('highlight');
   colDislike.classList.remove('highlight');
 
-  const item = items[currentIdx];
   results.push({emoji:item.emoji, label:item.label, like:isLike});
 
   setTimeout(()=>{
