@@ -148,7 +148,11 @@ main{
   animation:colItemPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
   transform-origin:center center;
 }
-.col-item-emoji{font-size:clamp(1rem,2.8vw,1.6rem);line-height:1}
+.col-item-emoji{
+  font-size:clamp(1rem,2.8vw,1.6rem);line-height:1;
+  display:flex;align-items:center;justify-content:center;
+}
+.col-item-emoji svg,.col-item-emoji img{width:1em;height:1em;display:block;object-fit:contain}
 .col-item-label{
   font-size:clamp(0.4rem,0.8vw,0.55rem);font-weight:600;
   color:rgba(255,255,255,0.85);line-height:1;
@@ -216,7 +220,9 @@ main{
   line-height:1;
   filter:drop-shadow(0 2px 8px rgba(0,0,0,0.1));
   transition:transform 0.3s ease;
+  display:flex;align-items:center;justify-content:center;
 }
+.card-emoji svg,.card-emoji img{width:1em;height:1em;display:block;object-fit:contain}
 .card.dragging .card-emoji{transform:scale(0.9)}
 .card-label{
   font-size:clamp(1.2rem,4vw,1.8rem);font-weight:800;
@@ -314,7 +320,8 @@ footer{
   0%{transform:scale(0);opacity:0}
   100%{transform:scale(1);opacity:1}
 }
-.result-item .ri-emoji{font-size:2rem;line-height:1}
+.result-item .ri-emoji{font-size:2rem;line-height:1;display:flex;align-items:center}
+.result-item .ri-emoji svg,.result-item .ri-emoji img{width:1em;height:1em;display:block;object-fit:contain}
 .result-item .ri-label{font-size:1rem;font-weight:700;flex:1}
 .result-item .ri-verdict{font-size:1.3rem}
 .result-total{margin:12px 0 20px;display:flex;gap:24px}
@@ -497,7 +504,7 @@ const items = [
   { emoji: '🔵', label: 'Azul', accent: '#2196F3' },
   { emoji: '✏️', label: 'Escribir', accent: '#607D8B' },
   { emoji: '🧩', label: 'Rompecabezas', accent: '#FFB74D' },
-  { emoji: '🥐', label: 'Masas', accent: '#A1887F' },
+  { emoji: '<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQwrJR6yGi4ga7rCObcLajXNRsE-LYlXn5nA&s" alt="Plastilinas" style="width:1em;height:1em;display:block;object-fit:contain;border-radius:4px">', label: 'Plastilinas', accent: '#FF8A65' },
   { emoji: '🚲', label: 'Bicicleta', accent: '#4CAF50' },
   { emoji: '🎤', label: 'Cantar', accent: '#E91E63' },
   { emoji: '🧮', label: 'Matemáticas', accent: '#00BCD4' },
@@ -550,7 +557,7 @@ function updateDots(){
 function showCard(idx){
   if(idx>=items.length){ showResults(); return; }
   const item = items[idx];
-  emojiEl.textContent = item.emoji;
+  emojiEl.innerHTML = item.emoji;
   labelEl.textContent = item.label;
   card.style.setProperty('--accent',item.accent);
   card.style.setProperty('--dx','0px');
