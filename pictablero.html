@@ -1113,12 +1113,31 @@ function generatePlayerHtml(rows, cols, name, cells) {
   const gridStyle = `grid-template-columns: repeat(${cols}, 1fr); grid-template-rows: repeat(${rows}, 1fr)`
 
   const audioData = cells.map(c => c.audio ? `"${c.audio}"` : 'null').join(',\n    ')
+  const shortName = name.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '').trim() || 'Tablero'
+  const iconLetter = shortName.charAt(0).toUpperCase() || 'T'
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="${escapeHtml(shortName)}">
+<meta name="theme-color" content="#dc2626">
+<link rel="manifest" href="data:application/json,${encodeURIComponent(JSON.stringify({
+  name: shortName,
+  short_name: shortName.slice(0,12),
+  start_url: '.',
+  display: 'standalone',
+  background_color: '#dc2626',
+  theme_color: '#dc2626',
+  icons: [{
+    src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192"><rect width="192" height="192" rx="32" fill="#dc2626"/><text x="96" y="132" font-size="120" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" text-anchor="middle">' + iconLetter + '</text></svg>'),
+    sizes: '192x192',
+    type: 'image/svg+xml'
+  }]
+}))}">
 <title>${escapeHtml(name)}</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
