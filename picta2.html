@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pictablero · Creador de tableros AAC</title>
+<style>
+:root {
+  --bg: #f5f5f4;
+  --surface: #fff;
+  --border: #d4d4d4;
+  --text: #1c1917;
+  --text2: #78716c;
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --select: #fee2e2;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --gap: 4px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* Top bar */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-right: 8px;
+}
+.topbar label {
+  font-size: 13px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbar input[type=number] {
+  width: 44px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+.topbar input[type=text] {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+.btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.btn:hover { background: #f0f0f0; }
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-play { background: #16a34a; color: white; border-color: #16a34a; }
+.btn-play:hover { background: #15803d; }
+.btn-play.active { background: #dc2626; border-color: #dc2626; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* Main layout */
+.main {
+  display: flex;
+  gap: 0;
+  height: calc(100vh - 56px);
+}
+.grid-area {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+.panel-area {
+  width: 380px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+}
+.panel-area.active { display: flex; }
+
+/* Grid */
+.grid-container {
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1;
+  display: grid;
+  gap: var(--gap);
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cell {
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  transition: box-shadow 0.15s;
+  min-height: 60px;
+}
+.cell:hover { box-shadow: inset 0 0 0 2px var(--primary); }
+.cell.selected { box-shadow: inset 0 0 0 3px var(--primary); background: var(--select); }
+.cell img {
+  max-width: 60%;
+  max-height: 55%;
+  pointer-events: none;
+  object-fit: contain;
+}
+.cell .label {
+  font-size: 11px;
+  text-align: center;
+  padding: 2px 4px;
+  line-height: 1.2;
+  word-break: break-word;
+  pointer-events: none;
+  max-width: 100%;
+}
+.cell.empty { background: #fafaf9; }
+.cell.empty::after {
+  content: '+';
+  font-size: 24px;
+  color: #d4d4d4;
+}
+.cell .cell-idx {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 9px;
+  color: #ccc;
+  pointer-events: none;
+}
+
+/* Panel */
+.panel-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-body { padding: 14px 16px; flex: 1; }
+
+/* Cell editor */
+.editor-group { margin-bottom: 14px; }
+.editor-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.editor-group input[type=text] {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+.editor-group input[type=color] {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.color-row label { margin-bottom: 0; }
+
+/* Pictogram search */
+.search-box {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.search-box input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+.search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.search-result {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  text-align: center;
+  background: white;
+  transition: border-color 0.1s;
+}
+.search-result:hover { border-color: var(--primary); }
+.search-result.selected { border-color: var(--primary); background: var(--select); }
+.search-result img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  pointer-events: none;
+}
+.search-result .sr-label {
+  font-size: 10px;
+  color: var(--text2);
+  line-height: 1.2;
+  margin-top: 2px;
+  pointer-events: none;
+}
+.search-info {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.search-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text2);
+  font-size: 13px;
+}
+
+/* No panel - full width grid */
+.panel-area:not(.active) ~ .grid-area { flex: 1; }
+
+/* Preview indicator */
+.cell-preview { width: 100%; display: flex; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main { flex-direction: column; height: auto; }
+  .panel-area {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 50vh;
+  }
+  .grid-area { padding: 12px; }
+  .grid-container { max-width: 100%; }
+  .topbar { gap: 6px; }
+  .topbar h1 { font-size: 15px; }
+}
+
+/* Scrollbar */
+.panel-area::-webkit-scrollbar, .search-results::-webkit-scrollbar { width: 6px; }
+.panel-area::-webkit-scrollbar-thumb, .search-results::-webkit-scrollbar-thumb {
+  background: var(--border); border-radius: 3px;
+}
+
+/* Recorder */
+.recorder-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.recorder-row .btn { display: inline-flex; align-items: center; gap: 4px; }
+.recorder-row .btn-recording {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-color: #dc2626 !important;
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.recorder-timer {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 42px;
+  color: var(--text);
+}
+.recorder-status {
+  font-size: 11px;
+  color: var(--text2);
+}
+/* Negation */
+.negation-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.negation-toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+.negation-toggle.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.negation-hint {
+  font-size: 11px;
+  color: var(--text2);
+}
+.search-result.match-negation {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+.search-result.match-negation:hover {
+  border-color: #dc2626;
+}
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c1917;
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 999;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⌨ Pictablero</h1>
+  <label>Filas <input type="number" id="rowsInput" value="4" min="1" max="12"></label>
+  <label>Cols <input type="number" id="colsInput" value="4" min="1" max="12"></label>
+  <label>Nombre <input type="text" id="nameInput" value="Mi tablero" size="20"></label>
+  <button class="btn btn-primary" id="exportBtn">⬇ Exportar tablero</button>
+  <button class="btn btn-sm" id="importBtn">📂 Importar</button>
+  <button class="btn btn-sm btn-play" id="playModeBtn">▶ PROBAR</button>
+  <button class="btn btn-sm" id="clearBtn">Limpiar</button>
+</div>
+
+<div class="main">
+  <div class="grid-area">
+    <div id="grid" class="grid-container"></div>
+  </div>
+
+  <div class="panel-area" id="panel">
+    <div class="panel-header">
+      <span>Editar celda</span>
+      <button class="btn btn-sm" id="closePanelBtn">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="editor-group">
+        <label>Texto de la celda</label>
+        <input type="text" id="labelInput" placeholder="Texto a mostrar">
+      </div>
+      <div class="editor-group">
+        <label>Color de fondo</label>
+        <div class="color-row">
+          <input type="color" id="bgColorInput" value="#ffffff">
+          <label>Texto <input type="color" id="textColorInput" value="#1c1917"></label>
+        </div>
+      </div>
+      <div class="editor-group">
+        <label>Pictograma</label>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Buscar pictograma...">
+          <button class="btn btn-sm" id="searchBtn">Buscar</button>
+        </div>
+        <div class="negation-row" id="negationRow" style="display:none">
+          <button class="negation-toggle" id="negationToggle">🚫 No</button>
+          <span class="negation-hint" id="negationHint"></span>
+        </div>
+        <div id="searchResults" class="search-results"></div>
+      </div>
+      <div class="editor-group" style="margin-top:12px; display:flex; gap:6px">
+        <button class="btn btn-sm" id="removePictoBtn">Quitar pictograma</button>
+        <button class="btn btn-sm" id="clearCellBtn">Vaciar celda</button>
+      </div>
+      <div class="editor-group" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+        <label>Grabación de voz</label>
+        <div class="recorder-row">
+          <button class="btn btn-sm" id="recordBtn">🎤 Grabar</button>
+          <button class="btn btn-sm" id="playAudioBtn" disabled>▶</button>
+          <button class="btn btn-sm" id="deleteAudioBtn" disabled>🗑</button>
+          <span class="recorder-timer" id="recordTimer"></span>
+          <span class="recorder-status" id="recordStatus">Sin grabación</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<input type="file" id="importFileInput" accept=".html" style="display:none">
+
+<script>"use strict";
+// Polyfill Promise for browsers without it
+if (typeof Promise !== 'function') {
+  (function() {
+    var P = function(fn) {
+      this.s = 0; this.v = void 0; this.q = [];
+      var self = this;
+      function r(v) { if (self.s !== 0) return; self.s = 1; self.v = v; self.f(); }
+      function j(v) { if (self.s !== 0) return; self.s = 2; self.v = v; self.f(); }
+      try { fn(r, j); } catch(e) { j(e); }
+    };
+    P.prototype.then = function(a, b) {
+      var self = this;
+      return new P(function(r, j) {
+        self.q.push({ a: a, b: b, r: r, j: j });
+        self.f();
+      });
+    };
+    P.prototype.f = function() {
+      if (this.s === 0) return;
+      var self = this;
+      setTimeout(function() {
+        while (self.q.length) {
+          var h = self.q.shift();
+          var cb = self.s === 1 ? h.a : h.b;
+          if (typeof cb === 'function') {
+            try { var x = cb(self.v); if (x && typeof x.then === 'function') x.then(h.r, h.j); else h.r(x); } catch(e) { h.j(e); }
+          } else if (self.s === 1) { h.r(self.v); } else { h.j(self.v); }
+        }
+      }, 0);
+    };
+    window.Promise = P;
+    P.resolve = function(v) { return new P(function(r) { r(v); }); };
+    P.reject = function(v) { return new P(function(_, j) { j(v); }); };
+    P.all = function(arr) {
+      return new P(function(r, j) {
+        var results = [], done = 0;
+        for (var i = 0; i < arr.length; i++) {
+          (function(i) {
+            arr[i].then(function(v) { results[i] = v; done++; if (done === arr.length) r(results); }, j);
+          })(i);
+        }
+      });
+    };
+  })();
+}
+// Polyfill fetch for browsers without it
+if (typeof window.fetch !== 'function') {
+  window.fetch = function(url) {
+    return new Promise(function(r, j) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.onload = function() {
+        r({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, json: function() { return new Promise(function(rr) { rr(JSON.parse(xhr.responseText)); }); } });
+      };
+      xhr.onerror = function() { j(new Error('Network error')); };
+      xhr.send();
+    });
+  };
+}
+
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
+function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+// ── State ──
+var state = {
+  rows: 4,
+  cols: 4,
+  cells: [],
+  selectedIdx: null,
+  gridName: 'Mi tablero',
+  lang: 'es',
+  searchResults: [],
+  editing: false,
+  negationMode: false,
+  lastSearchNegated: false,
+  lastSearchBaseQuery: '',
+  recording: false,
+  playMode: false
+};
+
+// ── DOM refs ──
+var gridEl = document.getElementById('grid');
+var panelEl = document.getElementById('panel');
+var rowsInput = document.getElementById('rowsInput');
+var colsInput = document.getElementById('colsInput');
+var nameInput = document.getElementById('nameInput');
+var labelInput = document.getElementById('labelInput');
+var bgColorInput = document.getElementById('bgColorInput');
+var textColorInput = document.getElementById('textColorInput');
+var searchInput = document.getElementById('searchInput');
+var searchResults = document.getElementById('searchResults');
+var closePanelBtn = document.getElementById('closePanelBtn');
+var removePictoBtn = document.getElementById('removePictoBtn');
+var clearCellBtn = document.getElementById('clearCellBtn');
+var exportBtn = document.getElementById('exportBtn');
+var importBtn = document.getElementById('importBtn');
+var importFileInput = document.getElementById('importFileInput');
+var clearBtn = document.getElementById('clearBtn');
+var playModeBtn = document.getElementById('playModeBtn');
+var toastEl = document.getElementById('toast');
+var recordBtn = document.getElementById('recordBtn');
+var playAudioBtn = document.getElementById('playAudioBtn');
+var deleteAudioBtn = document.getElementById('deleteAudioBtn');
+var recordTimer = document.getElementById('recordTimer');
+var recordStatus = document.getElementById('recordStatus');
+
+// ── Detectar file:// y advertir ──
+if (location.protocol === 'file:') {
+  document.body.innerHTML = "\n    <div style=\"display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;background:#1c1917;color:#f5f5f4;padding:40px;text-align:center\">\n      <div>\n        <h1 style=\"font-size:24px;margin-bottom:16px\">\u26D4 Pictablero no funciona con file://</h1>\n        <p style=\"font-size:15px;color:#a8a29e;margin-bottom:20px;max-width:500px;line-height:1.6\">\n          El navegador bloquea las llamadas a la API de pictogramas cuando abr\xEDs el archivo directo.\n        </p>\n        <div style=\"background:#292524;border-radius:8px;padding:16px;text-align:left;font-size:13px;line-height:1.8\">\n          <p style=\"margin-bottom:8px;color:#d4d4d4\"><b>Opci\xF3n 1 \u2014 PowerShell (una l\xEDnea):</b></p>\n          <code style=\"display:block;background:#0c0a09;padding:10px;border-radius:4px;color:#5eead4;word-break:break-all\">\n            python -m http.server 8765\n          </code>\n          <p style=\"margin-top:12px;margin-bottom:8px;color:#d4d4d4\"><b>Opci\xF3n 2 \u2014 bun (una l\xEDnea):</b></p>\n          <code style=\"display:block;background:#0c0a09;padding:10px;border-radius:4px;color:#5eead4;word-break:break-all\">\n            bunx serve .\n          </code>\n          <p style=\"margin-top:12px;color:#a8a29e\">\n            Despu\xE9s abr\xED <a href=\"http://localhost:8765/builder.html\" style=\"color:#2dd4bf\">http://localhost:8765/builder.html</a>\n          </p>\n        </div>\n      </div>\n    </div>";
+  throw new Error('file:// no compatible. Serví el archivo con "python -m http.server 8765"');
+}
+
+// ── Init (al final) ──
+
+function resetCells() {
+  var total = state.rows * state.cols;
+  state.cells = Array.from({
+    length: total
+  }, function () {
+    return makeCell();
+  });
+}
+function makeCell() {
+  return {
+    pictogramId: null,
+    pictogramUrl: null,
+    pictogramLabel: null,
+    label: '',
+    bgColor: '#ffffff',
+    textColor: '#1c1917',
+    audioBase64: null
+  };
+}
+
+// ── Render Grid ──
+function renderGrid() {
+  var rows = state.rows,
+    cols = state.cols;
+  gridEl.style.gridTemplateColumns = "repeat(".concat(cols, ", 1fr)");
+  gridEl.style.gridTemplateRows = "repeat(".concat(rows, ", 1fr)");
+  var html = '';
+  for (var i = 0; i < state.cells.length; i++) {
+    var c = state.cells[i];
+    var sel = state.selectedIdx === i ? ' selected' : '';
+    var empty = !c.pictogramId && !c.label ? ' empty' : '';
+    html += "<div class=\"cell".concat(sel).concat(empty, "\" data-idx=\"").concat(i, "\" style=\"background:").concat(c.bgColor, "\">");
+    html += "<span class=\"cell-idx\">".concat(i + 1, "</span>");
+    if (c.pictogramUrl) {
+      html += "<img src=\"".concat(c.pictogramUrl, "\" alt=\"").concat(c.pictogramLabel || '', "\" crossorigin=\"anonymous\">");
+    }
+    if (c.label) {
+      html += "<span class=\"label\" style=\"color:".concat(c.textColor, "\">").concat(escapeHtml(c.label), "</span>");
+    }
+    html += '</div>';
+  }
+  gridEl.innerHTML = html;
+}
+function escapeHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Cell selection ──
+function selectCell(idx) {
+  state.selectedIdx = idx;
+  var c = state.cells[idx];
+  labelInput.value = c.label || '';
+  bgColorInput.value = c.bgColor || '#ffffff';
+  textColorInput.value = c.textColor || '#1c1917';
+  panelEl.classList.add('active');
+  state.editing = true;
+  renderGrid();
+  searchInput.focus();
+  updateRecorderUI();
+}
+function closePanel() {
+  state.selectedIdx = null;
+  state.editing = false;
+  panelEl.classList.remove('active');
+  renderGrid();
+}
+
+// ── Cell editing ──
+function updateCellField(field, value) {
+  if (state.selectedIdx === null) return;
+  state.cells[state.selectedIdx][field] = value;
+  renderGrid();
+}
+labelInput.addEventListener('input', function () {
+  updateCellField('label', labelInput.value);
+  scheduleAutoSave();
+});
+bgColorInput.addEventListener('input', function () {
+  updateCellField('bgColor', bgColorInput.value);
+});
+textColorInput.addEventListener('input', function () {
+  updateCellField('textColor', textColorInput.value);
+});
+closePanelBtn.addEventListener('click', closePanel);
+removePictoBtn.addEventListener('click', function () {
+  if (state.selectedIdx === null) return;
+  var c = state.cells[state.selectedIdx];
+  c.pictogramId = null;
+  c.pictogramUrl = null;
+  c.pictogramLabel = null;
+  renderGrid();
+});
+clearCellBtn.addEventListener('click', function () {
+  if (state.selectedIdx === null) return;
+  state.cells[state.selectedIdx] = makeCell();
+  labelInput.value = '';
+  bgColorInput.value = '#ffffff';
+  textColorInput.value = '#1c1917';
+  searchInput.value = '';
+  searchResults.innerHTML = '';
+  renderGrid();
+  updateRecorderUI();
+});
+
+// ── Pictogram search ──
+searchInput.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') doSearch();
+});
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('negationToggle').addEventListener('click', function () {
+  state.negationMode = !state.negationMode;
+  document.getElementById('negationToggle').classList.toggle('active', state.negationMode);
+});
+function doSearch() {
+  return _doSearch.apply(this, arguments);
+}
+function _doSearch() {
+  _doSearch = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
+    var q, negMatch, baseQuery, isNegated, negRow, negHint, combinedData, queries, seen, results, _iterator2, _step2, arr, _iterator3, _step3, p, url, res, _t2, _t3;
+    return _regenerator().w(function (_context2) {
+      while (1) switch (_context2.p = _context2.n) {
+        case 0:
+          q = searchInput.value.trim();
+          if (q) {
+            _context2.n = 1;
+            break;
+          }
+          return _context2.a(2);
+        case 1:
+          searchResults.innerHTML = '<div class="search-loading"><div class="spinner"></div><div style="margin-top:8px">Buscando...</div></div>';
+          negMatch = q.match(/^(no|sin|ningún|nada|tampoco)\s+(.+)/i);
+          baseQuery = negMatch ? negMatch[2].trim() : q;
+          isNegated = !!negMatch;
+          state.lastSearchNegated = isNegated;
+          state.lastSearchBaseQuery = baseQuery;
+          negRow = document.getElementById('negationRow');
+          negHint = document.getElementById('negationHint');
+          if (isNegated) {
+            negRow.style.display = 'flex';
+            negHint.textContent = "\"".concat(baseQuery, "\" \u2192 asignar con \"no \"");
+            state.negationMode = true;
+          } else {
+            negRow.style.display = 'none';
+            state.negationMode = false;
+          }
+          document.getElementById('negationToggle').classList.toggle('active', state.negationMode);
+          _context2.p = 2;
+          combinedData = [];
+          if (!isNegated) {
+            _context2.n = 12;
+            break;
+          }
+          // Multi-query: primero variantes de negación, baseQuery al final
+          queries = ['no ' + baseQuery, 'prohibido ' + baseQuery, 'sin ' + baseQuery, 'prohibido', 'silencio', 'stop', baseQuery];
+          seen = new Set();
+          _context2.n = 3;
+          return Promise.all(queries.map(function (query) {
+            return fetch("https://api.arasaac.org/api/pictograms/".concat(state.lang, "/search/").concat(encodeURIComponent(query))).then(function (r) {
+              return r.ok ? r.json() : [];
+            })["catch"](function () {
+              return [];
+            });
+          }));
+        case 3:
+          results = _context2.v;
+          _iterator2 = _createForOfIteratorHelper(results);
+          _context2.p = 4;
+          _iterator2.s();
+        case 5:
+          if ((_step2 = _iterator2.n()).done) {
+            _context2.n = 8;
+            break;
+          }
+          arr = _step2.value;
+          if (Array.isArray(arr)) {
+            _context2.n = 6;
+            break;
+          }
+          return _context2.a(3, 7);
+        case 6:
+          _iterator3 = _createForOfIteratorHelper(arr);
+          try {
+            for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+              p = _step3.value;
+              if (!seen.has(p._id) && seen.size < 80) {
+                seen.add(p._id);
+                combinedData.push(p);
+              }
+            }
+          } catch (err) {
+            _iterator3.e(err);
+          } finally {
+            _iterator3.f();
+          }
+        case 7:
+          _context2.n = 5;
+          break;
+        case 8:
+          _context2.n = 10;
+          break;
+        case 9:
+          _context2.p = 9;
+          _t2 = _context2.v;
+          _iterator2.e(_t2);
+        case 10:
+          _context2.p = 10;
+          _iterator2.f();
+          return _context2.f(10);
+        case 11:
+          _context2.n = 16;
+          break;
+        case 12:
+          url = "https://api.arasaac.org/api/pictograms/".concat(state.lang, "/search/").concat(encodeURIComponent(baseQuery));
+          _context2.n = 13;
+          return fetch(url);
+        case 13:
+          res = _context2.v;
+          if (res.ok) {
+            _context2.n = 14;
+            break;
+          }
+          throw new Error('Error ' + res.status);
+        case 14:
+          _context2.n = 15;
+          return res.json();
+        case 15:
+          combinedData = _context2.v;
+        case 16:
+          if (combinedData.length > 50) combinedData = combinedData.slice(0, 50);
+          state.searchResults = combinedData;
+          renderSearchResults(combinedData, baseQuery, isNegated);
+          _context2.n = 18;
+          break;
+        case 17:
+          _context2.p = 17;
+          _t3 = _context2.v;
+          searchResults.innerHTML = "<div class=\"search-loading\">Error: ".concat(_t3.message, "</div>");
+        case 18:
+          return _context2.a(2);
+      }
+    }, _callee2, null, [[4, 9, 10, 11], [2, 17]]);
+  }));
+  return _doSearch.apply(this, arguments);
+}
+function renderSearchResults(data, query, isNegated) {
+  if (!data || data.length === 0) {
+    searchResults.innerHTML = '<div class="search-loading">Sin resultados</div>';
+    return;
+  }
+  var alreadyAssigned = new Set();
+  state.cells.forEach(function (c) {
+    if (c.pictogramId) alreadyAssigned.add(c.pictogramId);
+  });
+  var negWords = ['no', 'sin', 'prohibido', 'prohibit', 'negación', 'negacio', 'not', 'without', 'stop', 'não', 'prohibition'];
+  var html = "<div class=\"search-info\">".concat(data.length, " resultado(s) para \"").concat(escapeHtml(query), "\"").concat(isNegated ? ' · modo negado' : '', "</div>");
+  var _iterator = _createForOfIteratorHelper(data),
+    _step;
+  try {
+    var _loop = function _loop() {
+      var p = _step.value;
+      var id = p._id;
+      var label = p.keywords && p.keywords[0] ? p.keywords[0].keyword : p.meaning || '';
+      var imgUrl = "https://static.arasaac.org/pictograms/".concat(id, "/").concat(id, "_300.png");
+      var used = alreadyAssigned.has(id);
+      var allKeywords = (p.keywords || []).map(function (k) {
+        return k.keyword.toLowerCase();
+      }).join(' ');
+      var hasNegation = negWords.some(function (w) {
+        return allKeywords.includes(w);
+      });
+      var matchClass = hasNegation ? ' match-negation' : '';
+      var negBadge = hasNegation ? '🚫 ' : '';
+      html += "<div class=\"search-result".concat(used ? ' selected' : '').concat(matchClass, "\" data-pictoid=\"").concat(id, "\"\n                 data-imgurl=\"").concat(imgUrl, "\" data-label=\"").concat(escapeHtml(label), "\"\n                 title=\"").concat(escapeHtml(label)).concat(used ? ' (ya asignado)' : '').concat(hasNegation ? ' · picto con negación' : '', "\">\n      <img src=\"").concat(imgUrl, "\" alt=\"").concat(escapeHtml(label), "\" loading=\"lazy\" crossorigin=\"anonymous\"\n           onerror=\"this.parentElement.style.opacity=0.4\">\n      <div class=\"sr-label\">").concat(negBadge).concat(escapeHtml(label), "</div>\n    </div>");
+    };
+    for (_iterator.s(); !(_step = _iterator.n()).done;) {
+      _loop();
+    }
+  } catch (err) {
+    _iterator.e(err);
+  } finally {
+    _iterator.f();
+  }
+  searchResults.innerHTML = html;
+}
+
+// Click on search result → assign to cell
+searchResults.addEventListener('click', function (e) {
+  var item = e.target.closest('.search-result');
+  if (!item || state.selectedIdx === null) return;
+  var id = parseInt(item.dataset.pictoid);
+  var url = item.dataset.imgurl;
+  var label = item.dataset.label;
+  var c = state.cells[state.selectedIdx];
+  c.pictogramId = id;
+  c.pictogramUrl = url;
+  c.pictogramLabel = label;
+  var finalLabel = state.negationMode ? 'no ' + label : label;
+  c.label = finalLabel;
+  labelInput.value = finalLabel;
+  renderGrid();
+  document.querySelectorAll('.search-result').forEach(function (el) {
+    var pid = parseInt(el.dataset.pictoid);
+    el.classList.toggle('selected', state.cells.some(function (cc) {
+      return cc.pictogramId === pid;
+    }));
+  });
+  scheduleAutoSave();
+});
+
+// ── Voice recorder ──
+var mediaRecorder = null;
+var audioChunks = [];
+var recordingStartTime = null;
+var recordingTimer = null;
+
+// Detectar MIME type soportado por el navegador
+function getSupportedMime() {
+  var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4', 'audio/mpeg', ''];
+  for (var _i = 0, _types = types; _i < _types.length; _i++) {
+    var t = _types[_i];
+    if (!t || MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return '';
+}
+function updateRecorderUI() {
+  if (state.selectedIdx === null) return;
+  var c = state.cells[state.selectedIdx];
+  var hasAudio = !!c.audioBase64;
+  playAudioBtn.disabled = !hasAudio;
+  deleteAudioBtn.disabled = !hasAudio;
+  if (state.recording) {
+    recordBtn.textContent = '⏹ Detener';
+    recordBtn.classList.add('btn-recording');
+    recordStatus.textContent = '🔴 Grabando...';
+  } else {
+    recordBtn.textContent = '🎤 Grabar';
+    recordBtn.classList.remove('btn-recording');
+    if (hasAudio) {
+      recordStatus.textContent = '✅ Audio guardado';
+    } else {
+      recordStatus.textContent = 'Sin grabación';
+    }
+  }
+}
+function startRecording() {
+  return _startRecording.apply(this, arguments);
+}
+function _startRecording() {
+  _startRecording = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3() {
+    var stream, mimeType, options, _t4;
+    return _regenerator().w(function (_context3) {
+      while (1) switch (_context3.p = _context3.n) {
+        case 0:
+          if (!(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
+            _context3.n = 1;
+            break;
+          }
+          showToast('Grabación no soportada en este navegador');
+          return _context3.a(2);
+        case 1:
+          _context3.p = 1;
+          _context3.n = 2;
+          return navigator.mediaDevices.getUserMedia({
+            audio: true
+          });
+        case 2:
+          stream = _context3.v;
+          mimeType = getSupportedMime();
+          options = mimeType ? {
+            mimeType: mimeType
+          } : {};
+          mediaRecorder = new MediaRecorder(stream, options);
+          audioChunks = [];
+          mediaRecorder.ondataavailable = function (e) {
+            if (e.data.size > 0) audioChunks.push(e.data);
+          };
+          mediaRecorder.onerror = function () {
+            showToast('Error durante la grabación');
+            state.recording = false;
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+            recordTimer.textContent = '';
+            stream.getTracks().forEach(function (t) {
+              return t.stop();
+            });
+            updateRecorderUI();
+          };
+          mediaRecorder.onstop = function () {
+            var mime = mediaRecorder.mimeType || 'audio/webm';
+            var blob = new Blob(audioChunks, {
+              type: mime
+            });
+            if (blob.size === 0) {
+              showToast('Grabación vacía, intentá de nuevo');
+              state.recording = false;
+              updateRecorderUI();
+              return;
+            }
+            var reader = new FileReader();
+            reader.onloadend = function () {
+              updateCellField('audioBase64', reader.result);
+              state.recording = false;
+              updateRecorderUI();
+              scheduleAutoSave();
+              showToast('✅ Audio guardado (' + (blob.size / 1024).toFixed(0) + 'KB)');
+              // Reproducir automáticamente para verificar
+              setTimeout(function () {
+                return playCellAudio();
+              }, 300);
+            };
+            reader.readAsDataURL(blob);
+            stream.getTracks().forEach(function (t) {
+              return t.stop();
+            });
+          };
+          mediaRecorder.start(250); // chunks cada 250ms
+          state.recording = true;
+          recordingStartTime = Date.now();
+          updateRecorderUI();
+          recordingTimer = setInterval(function () {
+            var secs = Math.floor((Date.now() - recordingStartTime) / 1000);
+            recordTimer.textContent = formatTime(secs);
+          }, 200);
+          _context3.n = 4;
+          break;
+        case 3:
+          _context3.p = 3;
+          _t4 = _context3.v;
+          showToast('Error al acceder al micrófono: ' + _t4.message);
+        case 4:
+          return _context3.a(2);
+      }
+    }, _callee3, null, [[1, 3]]);
+  }));
+  return _startRecording.apply(this, arguments);
+}
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    state.recording = false;
+    clearInterval(recordingTimer);
+    recordingTimer = null;
+    recordTimer.textContent = '';
+    updateRecorderUI();
+  }
+}
+function playCellAudio() {
+  if (state.selectedIdx === null) return;
+  var c = state.cells[state.selectedIdx];
+  if (!c.audioBase64) return;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  var audio = new Audio(c.audioBase64);
+  audio.play().then(function () {
+    recordStatus.textContent = '🔊 Reproduciendo...';
+    audio.onended = function () {
+      return updateRecorderUI();
+    };
+  })["catch"](function (e) {
+    showToast('❌ El navegador no puede reproducir este audio');
+    recordStatus.textContent = '❌ Formato no soportado';
+  });
+}
+function deleteCellAudio() {
+  if (state.selectedIdx === null) return;
+  updateCellField('audioBase64', null);
+  recordTimer.textContent = '';
+  updateRecorderUI();
+  scheduleAutoSave();
+}
+function formatTime(secs) {
+  var m = Math.floor(secs / 60);
+  var s = secs % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+recordBtn.addEventListener('click', function () {
+  if (state.recording) {
+    stopRecording();
+    return;
+  }
+  if (state.selectedIdx === null) return;
+  startRecording();
+});
+playAudioBtn.addEventListener('click', playCellAudio);
+deleteAudioBtn.addEventListener('click', deleteCellAudio);
+
+// ── Grid resize (inmediato + al perder foco) ──
+rowsInput.addEventListener('input', resizeGrid);
+rowsInput.addEventListener('change', resizeGrid);
+colsInput.addEventListener('input', resizeGrid);
+colsInput.addEventListener('change', resizeGrid);
+nameInput.addEventListener('input', function () {
+  state.gridName = nameInput.value || 'Mi tablero';
+  scheduleAutoSave();
+});
+function resizeGrid() {
+  var newRows = Math.max(1, Math.min(12, parseInt(rowsInput.value) || 1));
+  var newCols = Math.max(1, Math.min(12, parseInt(colsInput.value) || 1));
+  var oldRows = state.rows;
+  var oldCols = state.cols;
+  var oldCells = state.cells.slice();
+  state.rows = newRows;
+  state.cols = newCols;
+  var total = newRows * newCols;
+  var newCells = [];
+  for (var r = 0; r < newRows; r++) {
+    for (var c = 0; c < newCols; c++) {
+      if (r < oldRows && c < oldCols) {
+        var idx = r * oldCols + c;
+        newCells.push(idx < oldCells.length ? oldCells[idx] : makeCell());
+      } else {
+        newCells.push(makeCell());
+      }
+    }
+  }
+  state.cells = newCells;
+  if (state.selectedIdx !== null && state.selectedIdx >= total) {
+    state.selectedIdx = null;
+    closePanel();
+  }
+  renderGrid();
+  scheduleAutoSave();
+}
+
+// ── Click on grid cells ──
+function playCellAudioBuilder(idx) {
+  var c = state.cells[idx];
+  if (!c.label && !c.audioBase64) return;
+  if (c.audioBase64) {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    var audio = new Audio(c.audioBase64);
+    audio.play()["catch"](function () {});
+    return;
+  }
+  if (c.label && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(c.label);
+    u.lang = 'es';
+    u.rate = 0.9;
+    u.pitch = 1;
+    window.speechSynthesis.speak(u);
+  }
+}
+gridEl.addEventListener('click', function (e) {
+  var cell = e.target.closest('.cell');
+  if (!cell) return;
+  var idx = parseInt(cell.dataset.idx);
+  playCellAudioBuilder(idx);
+  if (!state.playMode) selectCell(idx);
+});
+playModeBtn.addEventListener('click', function () {
+  state.playMode = !state.playMode;
+  playModeBtn.textContent = state.playMode ? '✕ SALIR' : '▶ PROBAR';
+  playModeBtn.classList.toggle('active', state.playMode);
+  if (state.playMode) {
+    closePanel();
+    document.body.style.cursor = 'pointer';
+  } else {
+    document.body.style.cursor = '';
+  }
+});
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    if (state.editing) {
+      closePanel();
+      return;
+    }
+  }
+  // Ctrl+F = enfocar búsqueda
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    if (state.editing) {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+      return;
+    }
+  }
+  // Arrow keys to navigate grid
+  if (state.editing && (e.key.startsWith('Arrow') || e.key === 'Tab')) {
+    e.preventDefault();
+    var rows = state.rows,
+      cols = state.cols,
+      selectedIdx = state.selectedIdx;
+    var r = Math.floor(selectedIdx / cols);
+    var c = selectedIdx % cols;
+    if (e.key === 'ArrowRight' || e.key === 'Tab' && !e.shiftKey) c = Math.min(cols - 1, c + 1);else if (e.key === 'ArrowLeft' || e.key === 'Tab' && e.shiftKey) c = Math.max(0, c - 1);else if (e.key === 'ArrowDown') r = Math.min(rows - 1, r + 1);else if (e.key === 'ArrowUp') r = Math.max(0, r - 1);
+    var newIdx = r * cols + c;
+    if (newIdx !== selectedIdx) selectCell(newIdx);
+  }
+});
+
+// ── Export ──
+exportBtn.addEventListener('click', exportPlayer);
+function exportPlayer() {
+  return _exportPlayer.apply(this, arguments);
+}
+function _exportPlayer() {
+  _exportPlayer = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {
+    var cells, rows, cols, gridName, total, hasPictos, cellData, done, i, c, b64, playerHtml, blob, url, filename, a, kb, _t5, _t6;
+    return _regenerator().w(function (_context4) {
+      while (1) switch (_context4.p = _context4.n) {
+        case 0:
+          cells = state.cells;
+          rows = state.rows, cols = state.cols, gridName = state.gridName;
+          total = cells.length;
+          hasPictos = cells.filter(function (c) {
+            return c.pictogramUrl;
+          }).length;
+          showToast('⬇ Descargando pictogramas...', true);
+          _context4.p = 1;
+          // Convert pictograms to base64 with progress
+          cellData = [];
+          done = 0;
+          i = 0;
+        case 2:
+          if (!(i < cells.length)) {
+            _context4.n = 9;
+            break;
+          }
+          c = cells[i];
+          b64 = null;
+          if (!c.pictogramUrl) {
+            _context4.n = 7;
+            break;
+          }
+          _context4.p = 3;
+          _context4.n = 4;
+          return urlToBase64(c.pictogramUrl);
+        case 4:
+          b64 = _context4.v;
+          _context4.n = 6;
+          break;
+        case 5:
+          _context4.p = 5;
+          _t5 = _context4.v;
+          console.warn('Failed to fetch pictogram', c.pictogramId, _t5);
+        case 6:
+          done++;
+          if (hasPictos > 1) {
+            toastEl.textContent = '⬇ Descargando pictogramas... ' + done + '/' + hasPictos;
+          }
+        case 7:
+          cellData.push({
+            label: c.label || '',
+            bg: c.bgColor || '#ffffff',
+            fg: c.textColor || '#1c1917',
+            img: b64,
+            alt: c.pictogramLabel || '',
+            audio: c.audioBase64 || null
+          });
+        case 8:
+          i++;
+          _context4.n = 2;
+          break;
+        case 9:
+          showToast('📦 Generando archivo...', true);
+          // Yield to let UI update
+          _context4.n = 10;
+          return new Promise(function (r) {
+            return setTimeout(r, 50);
+          });
+        case 10:
+          playerHtml = generatePlayerHtml(rows, cols, gridName, cellData);
+          blob = new Blob([playerHtml], {
+            type: 'text/html;charset=utf-8'
+          });
+          url = URL.createObjectURL(blob);
+          filename = "".concat(gridName.replace(/[^a-zA-Z0-9_-]/g, '_'), ".html");
+          a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          // Mostrar tamaño del archivo
+          kb = (blob.size / 1024).toFixed(0);
+          showToast('✅ ' + filename + ' (' + kb + 'KB)');
+          _context4.n = 12;
+          break;
+        case 11:
+          _context4.p = 11;
+          _t6 = _context4.v;
+          showToast('Error: ' + _t6.message);
+        case 12:
+          return _context4.a(2);
+      }
+    }, _callee4, null, [[3, 5], [1, 11]]);
+  }));
+  return _exportPlayer.apply(this, arguments);
+}
+function urlToBase64(_x) {
+  return _urlToBase.apply(this, arguments);
+}
+function _urlToBase() {
+  _urlToBase = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(url) {
+    var res, blob, img, maxDim, w, h, ratio, canvas;
+    return _regenerator().w(function (_context5) {
+      while (1) switch (_context5.n) {
+        case 0:
+          _context5.n = 1;
+          return fetch(url, {
+            mode: 'cors'
+          });
+        case 1:
+          res = _context5.v;
+          if (res.ok) {
+            _context5.n = 2;
+            break;
+          }
+          throw new Error('HTTP ' + res.status);
+        case 2:
+          _context5.n = 3;
+          return res.blob();
+        case 3:
+          blob = _context5.v;
+          _context5.n = 4;
+          return createImageBitmap(blob);
+        case 4:
+          img = _context5.v;
+          // Redimensionar si es muy grande
+          maxDim = 200;
+          w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            ratio = Math.min(maxDim / w, maxDim / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          img.close();
+          return _context5.a(2, canvas.toDataURL('image/png'));
+      }
+    }, _callee5);
+  }));
+  return _urlToBase.apply(this, arguments);
+}
+function generatePlayerHtml(rows, cols, name, cells) {
+  var cellHtml = cells.map(function (c, i) {
+    var isEmpty = !c.img && !c.label;
+    var cls = isEmpty ? ' class="c empty"' : ' class="c"';
+    var imgHtml = c.img ? "<img src=\"".concat(c.img, "\" alt=\"").concat(escapeHtml(c.alt), "\">") : '';
+    var labelHtml = c.label ? "<span class=\"lbl\">".concat(escapeHtml(c.label), "</span>") : '';
+    return "<div".concat(cls, " data-i=\"").concat(i, "\" style=\"background:").concat(c.bg, "; color:").concat(c.fg, "\">").concat(imgHtml).concat(labelHtml, "</div>");
+  }).join('\n');
+  var gridStyle = "grid-template-columns: repeat(".concat(cols, ", 1fr); grid-template-rows: repeat(").concat(rows, ", 1fr)");
+  var audioData = cells.map(function (c) {
+    return c.audio ? "\"".concat(c.audio, "\"") : 'null';
+  }).join(',\n    ');
+  var shortName = name.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '').trim() || 'Tablero';
+  var iconLetter = shortName.charAt(0).toUpperCase() || 'T';
+  return "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">\n<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\">\n<meta name=\"apple-mobile-web-app-title\" content=\"".concat(escapeHtml(shortName), "\">\n<meta name=\"theme-color\" content=\"#dc2626\">\n<link rel=\"manifest\" href=\"data:application/json,").concat(encodeURIComponent(JSON.stringify({
+    name: shortName,
+    short_name: shortName.slice(0, 12),
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#dc2626',
+    theme_color: '#dc2626',
+    icons: [{
+      src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192"><rect width="192" height="192" rx="32" fill="#dc2626"/><text x="96" y="132" font-size="120" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" text-anchor="middle">' + iconLetter + '</text></svg>'),
+      sizes: '192x192',
+      type: 'image/svg+xml'
+    }]
+  })), "\">\n<title>").concat(escapeHtml(name), "</title>\n<style>\n* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }\nhtml, body { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; touch-action: manipulation; }\n.grid {\n  display: grid;\n  ").concat(gridStyle, ";\n  gap: 3px;\n  padding: 3px;\n  height: 100%;\n  width: 100%;\n  background: #d4d4d4;\n}\n.c {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  border-radius: 4px;\n  cursor: pointer;\n  overflow: hidden;\n  padding: 4px;\n  touch-action: manipulation;\n  transition: transform 0.1s;\n}\n.c:active { transform: scale(0.95); }\n.c img {\n  max-width: 65%;\n  max-height: 55%;\n  pointer-events: none;\n  object-fit: contain;\n}\n.c .lbl {\n  font-size: clamp(10px, 2.5vmin, 18px);\n  text-align: center;\n  line-height: 1.2;\n  pointer-events: none;\n  padding: 2px;\n  font-weight: 500;\n  max-width: 100%;\n  word-break: break-word;\n}\n.c.empty { background: #f0f0f0; }\n@media (orientation: portrait) and (max-aspect-ratio: 3/4) {\n  .c .lbl { font-size: clamp(9px, 3vmin, 20px); }\n}\n</style>\n</head>\n<body>\n<div class=\"grid\" id=\"g\">\n").concat(cellHtml, "\n</div>\n<script>\n(function(){\n  var grid = document.getElementById('g');\n  var cells = grid.querySelectorAll('.c');\n  var utterance = null;\n  var audioData = [\n    ").concat(audioData, "\n  ];\n\n  function speak(text) {\n    if (!window.speechSynthesis) return;\n    window.speechSynthesis.cancel();\n    utterance = new SpeechSynthesisUtterance(text);\n    utterance.lang = 'es';\n    utterance.rate = 0.9;\n    utterance.pitch = 1.0;\n    window.speechSynthesis.speak(utterance);\n  }\n\n  function playAudio(dataUri) {\n    window.speechSynthesis.cancel();\n    var audio = new Audio(dataUri);\n    audio.play().catch(function(){});\n  }\n\n  // Fullscreen on tap for older tablets (double-tap to fullscreen)\n  var fsEl = document.documentElement;\n  function toggleFS() {\n    if (!document.fullscreenElement && !document.webkitFullscreenElement) {\n      if (fsEl.requestFullscreen) fsEl.requestFullscreen();\n      else if (fsEl.webkitRequestFullscreen) fsEl.webkitRequestFullscreen();\n    }\n  }\n\n  // Click handler \u2014 reproduce audio grabado o habla el texto\n  grid.addEventListener('click', function(e) {\n    var cell = e.target.closest('.c');\n    if (!cell || cell.classList.contains('empty')) return;\n    var idx = parseInt(cell.getAttribute('data-i'));\n    if (audioData[idx]) {\n      playAudio(audioData[idx]);\n      return;\n    }\n    var label = cell.querySelector('.lbl');\n    if (label && label.textContent.trim()) {\n      speak(label.textContent.trim());\n    }\n  });\n\n  // Long-press \u2192 fullscreen\n  var pressTimer = null;\n  grid.addEventListener('touchstart', function(e) {\n    pressTimer = setTimeout(toggleFS, 800);\n  });\n  grid.addEventListener('touchend', function() { clearTimeout(pressTimer); });\n  grid.addEventListener('touchmove', function() { clearTimeout(pressTimer); });\n})();\n</script>\n</body>\n</html>");
+}
+
+// ── Import ──
+importBtn.addEventListener('click', function () {
+  return importFileInput.click();
+});
+importFileInput.addEventListener('change', /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(e) {
+    var file, text, _t;
+    return _regenerator().w(function (_context) {
+      while (1) switch (_context.p = _context.n) {
+        case 0:
+          file = e.target.files[0];
+          if (file) {
+            _context.n = 1;
+            break;
+          }
+          return _context.a(2);
+        case 1:
+          _context.p = 1;
+          _context.n = 2;
+          return file.text();
+        case 2:
+          text = _context.v;
+          importFromHtml(text);
+          showToast('📂 Tablero importado');
+          _context.n = 4;
+          break;
+        case 3:
+          _context.p = 3;
+          _t = _context.v;
+          showToast('Error al importar: ' + _t.message);
+        case 4:
+          importFileInput.value = '';
+        case 5:
+          return _context.a(2);
+      }
+    }, _callee, null, [[1, 3]]);
+  }));
+  return function (_x2) {
+    return _ref.apply(this, arguments);
+  };
+}());
+function importFromHtml(html) {
+  var _doc$querySelector;
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(html, 'text/html');
+  var grid = doc.getElementById('g');
+  if (!grid) throw new Error('No se encontró la grilla en el archivo');
+
+  // Dimensiones desde CSS
+  var styleText = ((_doc$querySelector = doc.querySelector('style')) === null || _doc$querySelector === void 0 ? void 0 : _doc$querySelector.textContent) || '';
+  var colsMatch = styleText.match(/grid-template-columns:\s*repeat\((\d+),\s*1fr\)/);
+  var rowsMatch = styleText.match(/grid-template-rows:\s*repeat\((\d+),\s*1fr\)/);
+  var cols = colsMatch ? parseInt(colsMatch[1]) : 4;
+  var rows = rowsMatch ? parseInt(rowsMatch[1]) : 4;
+
+  // Audio data desde el script
+  var audioData = [];
+  var audioMatch = html.match(/var audioData\s*=\s*\[([\s\S]*?)\]\s*;/);
+  if (audioMatch) {
+    try {
+      audioData = JSON.parse('[' + audioMatch[1] + ']');
+    } catch (e) {
+      audioData = [];
+    }
+  }
+
+  // Celdas
+  var cellEls = grid.querySelectorAll('.c');
+  var newCells = [];
+  cellEls.forEach(function (el, i) {
+    var _st$match, _st$match2;
+    var st = el.getAttribute('style') || '';
+    var bg = ((_st$match = st.match(/background:\s*(#[0-9a-fA-F]+)/)) === null || _st$match === void 0 ? void 0 : _st$match[1]) || '#ffffff';
+    var fg = ((_st$match2 = st.match(/color:\s*(#[0-9a-fA-F]+)/)) === null || _st$match2 === void 0 ? void 0 : _st$match2[1]) || '#1c1917';
+    var imgEl = el.querySelector('img');
+    var labelEl = el.querySelector('.lbl');
+    var label = labelEl ? labelEl.textContent.trim() : '';
+    newCells.push({
+      pictogramId: null,
+      pictogramUrl: imgEl ? imgEl.getAttribute('src') : null,
+      pictogramLabel: label || null,
+      label: label,
+      bgColor: bg,
+      textColor: fg,
+      audioBase64: audioData[i] || null
+    });
+  });
+  var total = rows * cols;
+  while (newCells.length < total) newCells.push(makeCell());
+  state.rows = rows;
+  state.cols = cols;
+  state.cells = newCells;
+  state.gridName = doc.title || 'Mi tablero';
+  state.selectedIdx = null;
+  rowsInput.value = rows;
+  colsInput.value = cols;
+  nameInput.value = state.gridName;
+  closePanel();
+  renderGrid();
+  saveState();
+}
+
+// ── Auto-save to localStorage ──
+var autoSaveTimer = null;
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(saveState, 500);
+}
+function saveState() {
+  try {
+    var data = {
+      rows: state.rows,
+      cols: state.cols,
+      cells: state.cells,
+      gridName: state.gridName
+    };
+    localStorage.setItem('pictablero-builder', JSON.stringify(data));
+  } catch (e) {/* storage full, ignore */}
+}
+function loadState() {
+  try {
+    var raw = localStorage.getItem('pictablero-builder');
+    if (!raw) return false;
+    var data = JSON.parse(raw);
+    if (!data.cells || !Array.isArray(data.cells)) return false;
+    // Migrar celdas viejas (sin audioBase64)
+    data.cells = data.cells.map(function (c) {
+      return _objectSpread(_objectSpread({}, makeCell()), c);
+    });
+    state.rows = data.rows || 4;
+    state.cols = data.cols || 4;
+    state.cells = data.cells;
+    state.gridName = data.gridName || 'Mi tablero';
+    rowsInput.value = state.rows;
+    colsInput.value = state.cols;
+    nameInput.value = state.gridName;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ── Clear ──
+clearBtn.addEventListener('click', function () {
+  if (!confirm('¿Vaciar todo el tablero?')) return;
+  resetCells();
+  state.selectedIdx = null;
+  closePanel();
+  renderGrid();
+  saveState();
+  showToast('Tablero limpiado');
+});
+
+// ── Toast ──
+function showToast(msg, persist) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastEl._hideTimer);
+  if (!persist) {
+    toastEl._hideTimer = setTimeout(function () {
+      return toastEl.classList.remove('show');
+    }, 2500);
+  }
+}
+
+// ── Keyboard global shortcuts ──
+document.addEventListener('keydown', function (e) {
+  // Ctrl+S = save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveState();
+    showToast('Guardado');
+  }
+  // Ctrl+E = export
+  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+    e.preventDefault();
+    exportBtn.click();
+  }
+});
+
+// ── Init ──
+var loaded = loadState();
+if (!loaded) resetCells();
+renderGrid();
+
+// Diagnostic: qué soporta el navegador
+if (typeof MediaRecorder !== 'undefined') {
+  var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4', 'audio/mpeg'];
+  var supported = types.filter(function (t) {
+    return MediaRecorder.isTypeSupported(t);
+  });
+  console.log('🎙 Formatos de audio soportados:', supported.length ? supported : 'ninguno (solo default)');
+} else {
+  console.log('🎙 MediaRecorder no disponible');
+}
+function bindEvents() {
+  // placeholder — todos los eventos se asignan directamente
+}
+</script>
+</body>
+</html>
