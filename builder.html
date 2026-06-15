@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pictablero · Creador de tableros AAC</title>
+<style>
+:root {
+  --bg: #f5f5f4;
+  --surface: #fff;
+  --border: #d4d4d4;
+  --text: #1c1917;
+  --text2: #78716c;
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --select: #fee2e2;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --gap: 4px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* Top bar */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-right: 8px;
+}
+.topbar label {
+  font-size: 13px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbar input[type=number] {
+  width: 44px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+.topbar input[type=text] {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+.btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.btn:hover { background: #f0f0f0; }
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-play { background: #16a34a; color: white; border-color: #16a34a; }
+.btn-play:hover { background: #15803d; }
+.btn-play.active { background: #dc2626; border-color: #dc2626; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* Main layout */
+.main {
+  display: flex;
+  gap: 0;
+  height: calc(100vh - 56px);
+}
+.grid-area {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+.panel-area {
+  width: 380px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+}
+.panel-area.active { display: flex; }
+
+/* Grid */
+.grid-container {
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1;
+  display: grid;
+  gap: var(--gap);
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cell {
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  transition: box-shadow 0.15s;
+  min-height: 60px;
+}
+.cell:hover { box-shadow: inset 0 0 0 2px var(--primary); }
+.cell.selected { box-shadow: inset 0 0 0 3px var(--primary); background: var(--select); }
+.cell img {
+  max-width: 60%;
+  max-height: 55%;
+  pointer-events: none;
+  object-fit: contain;
+}
+.cell .label {
+  font-size: 11px;
+  text-align: center;
+  padding: 2px 4px;
+  line-height: 1.2;
+  word-break: break-word;
+  pointer-events: none;
+  max-width: 100%;
+}
+.cell.empty { background: #fafaf9; }
+.cell.empty::after {
+  content: '+';
+  font-size: 24px;
+  color: #d4d4d4;
+}
+.cell .cell-idx {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 9px;
+  color: #ccc;
+  pointer-events: none;
+}
+
+/* Panel */
+.panel-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-body { padding: 14px 16px; flex: 1; }
+
+/* Cell editor */
+.editor-group { margin-bottom: 14px; }
+.editor-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.editor-group input[type=text] {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+.editor-group input[type=color] {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.color-row label { margin-bottom: 0; }
+
+/* Pictogram search */
+.search-box {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.search-box input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+.search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.search-result {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  text-align: center;
+  background: white;
+  transition: border-color 0.1s;
+}
+.search-result:hover { border-color: var(--primary); }
+.search-result.selected { border-color: var(--primary); background: var(--select); }
+.search-result img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  pointer-events: none;
+}
+.search-result .sr-label {
+  font-size: 10px;
+  color: var(--text2);
+  line-height: 1.2;
+  margin-top: 2px;
+  pointer-events: none;
+}
+.search-info {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.search-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text2);
+  font-size: 13px;
+}
+
+/* No panel - full width grid */
+.panel-area:not(.active) ~ .grid-area { flex: 1; }
+
+/* Preview indicator */
+.cell-preview { width: 100%; display: flex; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main { flex-direction: column; height: auto; }
+  .panel-area {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 50vh;
+  }
+  .grid-area { padding: 12px; }
+  .grid-container { max-width: 100%; }
+  .topbar { gap: 6px; }
+  .topbar h1 { font-size: 15px; }
+}
+
+/* Scrollbar */
+.panel-area::-webkit-scrollbar, .search-results::-webkit-scrollbar { width: 6px; }
+.panel-area::-webkit-scrollbar-thumb, .search-results::-webkit-scrollbar-thumb {
+  background: var(--border); border-radius: 3px;
+}
+
+/* Recorder */
+.recorder-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.recorder-row .btn { display: inline-flex; align-items: center; gap: 4px; }
+.recorder-row .btn-recording {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-color: #dc2626 !important;
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.recorder-timer {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 42px;
+  color: var(--text);
+}
+.recorder-status {
+  font-size: 11px;
+  color: var(--text2);
+}
+/* Negation */
+.negation-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.negation-toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+.negation-toggle.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.negation-hint {
+  font-size: 11px;
+  color: var(--text2);
+}
+.search-result.match-negation {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+.search-result.match-negation:hover {
+  border-color: #dc2626;
+}
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c1917;
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 999;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⌨ Pictablero</h1>
+  <label>Filas <input type="number" id="rowsInput" value="4" min="1" max="12"></label>
+  <label>Cols <input type="number" id="colsInput" value="4" min="1" max="12"></label>
+  <label>Nombre <input type="text" id="nameInput" value="Mi tablero" size="20"></label>
+  <button class="btn btn-primary" id="exportBtn">⬇ Exportar tablero</button>
+  <button class="btn btn-sm" id="importBtn">📂 Importar</button>
+  <button class="btn btn-sm btn-play" id="playModeBtn">▶ PROBAR</button>
+  <button class="btn btn-sm" id="clearBtn">Limpiar</button>
+</div>
+
+<div class="main">
+  <div class="grid-area">
+    <div id="grid" class="grid-container"></div>
+  </div>
+
+  <div class="panel-area" id="panel">
+    <div class="panel-header">
+      <span>Editar celda</span>
+      <button class="btn btn-sm" id="closePanelBtn">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="editor-group">
+        <label>Texto de la celda</label>
+        <input type="text" id="labelInput" placeholder="Texto a mostrar">
+      </div>
+      <div class="editor-group">
+        <label>Color de fondo</label>
+        <div class="color-row">
+          <input type="color" id="bgColorInput" value="#ffffff">
+          <label>Texto <input type="color" id="textColorInput" value="#1c1917"></label>
+        </div>
+      </div>
+      <div class="editor-group">
+        <label>Pictograma</label>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Buscar pictograma...">
+          <button class="btn btn-sm" id="searchBtn">Buscar</button>
+        </div>
+        <div class="negation-row" id="negationRow" style="display:none">
+          <button class="negation-toggle" id="negationToggle">🚫 No</button>
+          <span class="negation-hint" id="negationHint"></span>
+        </div>
+        <div id="searchResults" class="search-results"></div>
+      </div>
+      <div class="editor-group" style="margin-top:12px; display:flex; gap:6px">
+        <button class="btn btn-sm" id="removePictoBtn">Quitar pictograma</button>
+        <button class="btn btn-sm" id="clearCellBtn">Vaciar celda</button>
+      </div>
+      <div class="editor-group" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+        <label>Grabación de voz</label>
+        <div class="recorder-row">
+          <button class="btn btn-sm" id="recordBtn">🎤 Grabar</button>
+          <button class="btn btn-sm" id="playAudioBtn" disabled>▶</button>
+          <button class="btn btn-sm" id="deleteAudioBtn" disabled>🗑</button>
+          <span class="recorder-timer" id="recordTimer"></span>
+          <span class="recorder-status" id="recordStatus">Sin grabación</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<input type="file" id="importFileInput" accept=".html" style="display:none">
+
+<script>
+// ── State ──
+const state = {
+  rows: 4,
+  cols: 4,
+  cells: [],
+  selectedIdx: null,
+  gridName: 'Mi tablero',
+  lang: 'es',
+  searchResults: [],
+  editing: false,
+  negationMode: false,
+  lastSearchNegated: false,
+  lastSearchBaseQuery: '',
+  recording: false,
+  playMode: false
+}
+
+// ── DOM refs ──
+const gridEl = document.getElementById('grid')
+const panelEl = document.getElementById('panel')
+const rowsInput = document.getElementById('rowsInput')
+const colsInput = document.getElementById('colsInput')
+const nameInput = document.getElementById('nameInput')
+const labelInput = document.getElementById('labelInput')
+const bgColorInput = document.getElementById('bgColorInput')
+const textColorInput = document.getElementById('textColorInput')
+const searchInput = document.getElementById('searchInput')
+const searchResults = document.getElementById('searchResults')
+const closePanelBtn = document.getElementById('closePanelBtn')
+const removePictoBtn = document.getElementById('removePictoBtn')
+const clearCellBtn = document.getElementById('clearCellBtn')
+const exportBtn = document.getElementById('exportBtn')
+const importBtn = document.getElementById('importBtn')
+const importFileInput = document.getElementById('importFileInput')
+const clearBtn = document.getElementById('clearBtn')
+const playModeBtn = document.getElementById('playModeBtn')
+const toastEl = document.getElementById('toast')
+const recordBtn = document.getElementById('recordBtn')
+const playAudioBtn = document.getElementById('playAudioBtn')
+const deleteAudioBtn = document.getElementById('deleteAudioBtn')
+const recordTimer = document.getElementById('recordTimer')
+const recordStatus = document.getElementById('recordStatus')
+
+// ── Detectar file:// y advertir ──
+if (location.protocol === 'file:') {
+  document.body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;background:#1c1917;color:#f5f5f4;padding:40px;text-align:center">
+      <div>
+        <h1 style="font-size:24px;margin-bottom:16px">⛔ Pictablero no funciona con file://</h1>
+        <p style="font-size:15px;color:#a8a29e;margin-bottom:20px;max-width:500px;line-height:1.6">
+          El navegador bloquea las llamadas a la API de pictogramas cuando abrís el archivo directo.
+        </p>
+        <div style="background:#292524;border-radius:8px;padding:16px;text-align:left;font-size:13px;line-height:1.8">
+          <p style="margin-bottom:8px;color:#d4d4d4"><b>Opción 1 — PowerShell (una línea):</b></p>
+          <code style="display:block;background:#0c0a09;padding:10px;border-radius:4px;color:#5eead4;word-break:break-all">
+            python -m http.server 8765
+          </code>
+          <p style="margin-top:12px;margin-bottom:8px;color:#d4d4d4"><b>Opción 2 — bun (una línea):</b></p>
+          <code style="display:block;background:#0c0a09;padding:10px;border-radius:4px;color:#5eead4;word-break:break-all">
+            bunx serve .
+          </code>
+          <p style="margin-top:12px;color:#a8a29e">
+            Después abrí <a href="http://localhost:8765/builder.html" style="color:#2dd4bf">http://localhost:8765/builder.html</a>
+          </p>
+        </div>
+      </div>
+    </div>`
+  throw new Error('file:// no compatible. Serví el archivo con "python -m http.server 8765"')
+}
+
+// ── Init (al final) ──
+
+function resetCells() {
+  const total = state.rows * state.cols
+  state.cells = Array.from({ length: total }, () => makeCell())
+}
+
+function makeCell() {
+  return {
+    pictogramId: null,
+    pictogramUrl: null,
+    pictogramLabel: null,
+    label: '',
+    bgColor: '#ffffff',
+    textColor: '#1c1917',
+    audioBase64: null
+  }
+}
+
+// ── Render Grid ──
+function renderGrid() {
+  const { rows, cols } = state
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
+  gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`
+
+  let html = ''
+  for (let i = 0; i < state.cells.length; i++) {
+    const c = state.cells[i]
+    const sel = state.selectedIdx === i ? ' selected' : ''
+    const empty = !c.pictogramId && !c.label ? ' empty' : ''
+
+    html += `<div class="cell${sel}${empty}" data-idx="${i}" style="background:${c.bgColor}">`
+    html += `<span class="cell-idx">${i+1}</span>`
+    if (c.pictogramUrl) {
+      html += `<img src="${c.pictogramUrl}" alt="${c.pictogramLabel || ''}" crossorigin="anonymous">`
+    }
+    if (c.label) {
+      html += `<span class="label" style="color:${c.textColor}">${escapeHtml(c.label)}</span>`
+    }
+    html += '</div>'
+  }
+  gridEl.innerHTML = html
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div')
+  d.textContent = s
+  return d.innerHTML
+}
+
+// ── Cell selection ──
+function selectCell(idx) {
+  state.selectedIdx = idx
+  const c = state.cells[idx]
+  labelInput.value = c.label || ''
+  bgColorInput.value = c.bgColor || '#ffffff'
+  textColorInput.value = c.textColor || '#1c1917'
+  panelEl.classList.add('active')
+  state.editing = true
+  renderGrid()
+  searchInput.focus()
+  updateRecorderUI()
+}
+
+function closePanel() {
+  state.selectedIdx = null
+  state.editing = false
+  panelEl.classList.remove('active')
+  renderGrid()
+}
+
+// ── Cell editing ──
+function updateCellField(field, value) {
+  if (state.selectedIdx === null) return
+  state.cells[state.selectedIdx][field] = value
+  renderGrid()
+}
+
+labelInput.addEventListener('input', () => {
+  updateCellField('label', labelInput.value)
+  scheduleAutoSave()
+})
+bgColorInput.addEventListener('input', () => {
+  updateCellField('bgColor', bgColorInput.value)
+})
+textColorInput.addEventListener('input', () => {
+  updateCellField('textColor', textColorInput.value)
+})
+
+closePanelBtn.addEventListener('click', closePanel)
+
+removePictoBtn.addEventListener('click', () => {
+  if (state.selectedIdx === null) return
+  const c = state.cells[state.selectedIdx]
+  c.pictogramId = null
+  c.pictogramUrl = null
+  c.pictogramLabel = null
+  renderGrid()
+})
+
+clearCellBtn.addEventListener('click', () => {
+  if (state.selectedIdx === null) return
+  state.cells[state.selectedIdx] = makeCell()
+  labelInput.value = ''
+  bgColorInput.value = '#ffffff'
+  textColorInput.value = '#1c1917'
+  searchInput.value = ''
+  searchResults.innerHTML = ''
+  renderGrid()
+  updateRecorderUI()
+})
+
+// ── Pictogram search ──
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doSearch()
+})
+
+document.getElementById('searchBtn').addEventListener('click', doSearch)
+
+document.getElementById('negationToggle').addEventListener('click', () => {
+  state.negationMode = !state.negationMode
+  document.getElementById('negationToggle').classList.toggle('active', state.negationMode)
+})
+
+async function doSearch() {
+  const q = searchInput.value.trim()
+  if (!q) return
+  searchResults.innerHTML = '<div class="search-loading"><div class="spinner"></div><div style="margin-top:8px">Buscando...</div></div>'
+  const negMatch = q.match(/^(no|sin|ningún|nada|tampoco)\s+(.+)/i)
+  const baseQuery = negMatch ? negMatch[2].trim() : q
+  const isNegated = !!negMatch
+  state.lastSearchNegated = isNegated
+  state.lastSearchBaseQuery = baseQuery
+  const negRow = document.getElementById('negationRow')
+  const negHint = document.getElementById('negationHint')
+  if (isNegated) {
+    negRow.style.display = 'flex'
+    negHint.textContent = `"${baseQuery}" → asignar con "no "`
+    state.negationMode = true
+  } else {
+    negRow.style.display = 'none'
+    state.negationMode = false
+  }
+  document.getElementById('negationToggle').classList.toggle('active', state.negationMode)
+  try {
+    let combinedData = []
+    if (isNegated) {
+      // Multi-query: primero variantes de negación, baseQuery al final
+      const queries = [
+        'no ' + baseQuery,
+        'prohibido ' + baseQuery,
+        'sin ' + baseQuery,
+        'prohibido',
+        'silencio',
+        'stop',
+        baseQuery
+      ]
+      const seen = new Set()
+      const results = await Promise.all(queries.map(query =>
+        fetch(`https://api.arasaac.org/api/pictograms/${state.lang}/search/${encodeURIComponent(query)}`)
+          .then(r => r.ok ? r.json() : [])
+          .catch(() => [])
+      ))
+      for (const arr of results) {
+        if (!Array.isArray(arr)) continue
+        for (const p of arr) {
+          if (!seen.has(p._id) && seen.size < 80) {
+            seen.add(p._id)
+            combinedData.push(p)
+          }
+        }
+      }
+    } else {
+      const url = `https://api.arasaac.org/api/pictograms/${state.lang}/search/${encodeURIComponent(baseQuery)}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Error ' + res.status)
+      combinedData = await res.json()
+    }
+    if (combinedData.length > 50) combinedData = combinedData.slice(0, 50)
+    state.searchResults = combinedData
+    renderSearchResults(combinedData, baseQuery, isNegated)
+  } catch (err) {
+    searchResults.innerHTML = `<div class="search-loading">Error: ${err.message}</div>`
+  }
+}
+
+function renderSearchResults(data, query, isNegated) {
+  if (!data || data.length === 0) {
+    searchResults.innerHTML = '<div class="search-loading">Sin resultados</div>'
+    return
+  }
+  const alreadyAssigned = new Set()
+  state.cells.forEach(c => { if (c.pictogramId) alreadyAssigned.add(c.pictogramId) })
+
+  const negWords = ['no', 'sin', 'prohibido', 'prohibit', 'negación', 'negacio', 'not', 'without', 'stop', 'não', 'prohibition']
+  let html = `<div class="search-info">${data.length} resultado(s) para "${escapeHtml(query)}"${isNegated ? ' · modo negado' : ''}</div>`
+  for (const p of data) {
+    const id = p._id
+    const label = p.keywords && p.keywords[0] ? p.keywords[0].keyword : (p.meaning || '')
+    const imgUrl = `https://static.arasaac.org/pictograms/${id}/${id}_300.png`
+    const used = alreadyAssigned.has(id)
+    const allKeywords = (p.keywords || []).map(k => k.keyword.toLowerCase()).join(' ')
+    const hasNegation = negWords.some(w => allKeywords.includes(w))
+    const matchClass = hasNegation ? ' match-negation' : ''
+    const negBadge = hasNegation ? '🚫 ' : ''
+    html += `<div class="search-result${used ? ' selected' : ''}${matchClass}" data-pictoid="${id}"
+                 data-imgurl="${imgUrl}" data-label="${escapeHtml(label)}"
+                 title="${escapeHtml(label)}${used ? ' (ya asignado)' : ''}${hasNegation ? ' · picto con negación' : ''}">
+      <img src="${imgUrl}" alt="${escapeHtml(label)}" loading="lazy" crossorigin="anonymous"
+           onerror="this.parentElement.style.opacity=0.4">
+      <div class="sr-label">${negBadge}${escapeHtml(label)}</div>
+    </div>`
+  }
+  searchResults.innerHTML = html
+}
+
+// Click on search result → assign to cell
+searchResults.addEventListener('click', (e) => {
+  const item = e.target.closest('.search-result')
+  if (!item || state.selectedIdx === null) return
+  const id = parseInt(item.dataset.pictoid)
+  const url = item.dataset.imgurl
+  const label = item.dataset.label
+  const c = state.cells[state.selectedIdx]
+  c.pictogramId = id
+  c.pictogramUrl = url
+  c.pictogramLabel = label
+  const finalLabel = state.negationMode ? 'no ' + label : label
+  c.label = finalLabel
+  labelInput.value = finalLabel
+  renderGrid()
+  document.querySelectorAll('.search-result').forEach(el => {
+    const pid = parseInt(el.dataset.pictoid)
+    el.classList.toggle('selected', state.cells.some(cc => cc.pictogramId === pid))
+  })
+  scheduleAutoSave()
+})
+
+// ── Voice recorder ──
+let mediaRecorder = null
+let audioChunks = []
+let recordingStartTime = null
+let recordingTimer = null
+
+// Detectar MIME type soportado por el navegador
+function getSupportedMime() {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4',
+    'audio/mpeg',
+    ''
+  ]
+  for (const t of types) {
+    if (!t || MediaRecorder.isTypeSupported(t)) return t
+  }
+  return ''
+}
+
+function updateRecorderUI() {
+  if (state.selectedIdx === null) return
+  const c = state.cells[state.selectedIdx]
+  const hasAudio = !!c.audioBase64
+  playAudioBtn.disabled = !hasAudio
+  deleteAudioBtn.disabled = !hasAudio
+  if (state.recording) {
+    recordBtn.textContent = '⏹ Detener'
+    recordBtn.classList.add('btn-recording')
+    recordStatus.textContent = '🔴 Grabando...'
+  } else {
+    recordBtn.textContent = '🎤 Grabar'
+    recordBtn.classList.remove('btn-recording')
+    if (hasAudio) {
+      recordStatus.textContent = '✅ Audio guardado'
+    } else {
+      recordStatus.textContent = 'Sin grabación'
+    }
+  }
+}
+
+async function startRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Grabación no soportada en este navegador')
+    return
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const mimeType = getSupportedMime()
+    const options = mimeType ? { mimeType } : {}
+    mediaRecorder = new MediaRecorder(stream, options)
+    audioChunks = []
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) audioChunks.push(e.data)
+    }
+    mediaRecorder.onerror = () => {
+      showToast('Error durante la grabación')
+      state.recording = false
+      clearInterval(recordingTimer)
+      recordingTimer = null
+      recordTimer.textContent = ''
+      stream.getTracks().forEach(t => t.stop())
+      updateRecorderUI()
+    }
+    mediaRecorder.onstop = () => {
+      const mime = mediaRecorder.mimeType || 'audio/webm'
+      const blob = new Blob(audioChunks, { type: mime })
+      if (blob.size === 0) {
+        showToast('Grabación vacía, intentá de nuevo')
+        state.recording = false
+        updateRecorderUI()
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        updateCellField('audioBase64', reader.result)
+        state.recording = false
+        updateRecorderUI()
+        scheduleAutoSave()
+        showToast('✅ Audio guardado (' + (blob.size / 1024).toFixed(0) + 'KB)')
+        // Reproducir automáticamente para verificar
+        setTimeout(() => playCellAudio(), 300)
+      }
+      reader.readAsDataURL(blob)
+      stream.getTracks().forEach(t => t.stop())
+    }
+    mediaRecorder.start(250) // chunks cada 250ms
+    state.recording = true
+    recordingStartTime = Date.now()
+    updateRecorderUI()
+    recordingTimer = setInterval(() => {
+      const secs = Math.floor((Date.now() - recordingStartTime) / 1000)
+      recordTimer.textContent = formatTime(secs)
+    }, 200)
+  } catch (err) {
+    showToast('Error al acceder al micrófono: ' + err.message)
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop()
+    state.recording = false
+    clearInterval(recordingTimer)
+    recordingTimer = null
+    recordTimer.textContent = ''
+    updateRecorderUI()
+  }
+}
+
+function playCellAudio() {
+  if (state.selectedIdx === null) return
+  const c = state.cells[state.selectedIdx]
+  if (!c.audioBase64) return
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
+  const audio = new Audio(c.audioBase64)
+  audio.play().then(() => {
+    recordStatus.textContent = '🔊 Reproduciendo...'
+    audio.onended = () => updateRecorderUI()
+  }).catch(e => {
+    showToast('❌ El navegador no puede reproducir este audio')
+    recordStatus.textContent = '❌ Formato no soportado'
+  })
+}
+
+function deleteCellAudio() {
+  if (state.selectedIdx === null) return
+  updateCellField('audioBase64', null)
+  recordTimer.textContent = ''
+  updateRecorderUI()
+  scheduleAutoSave()
+}
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return m + ':' + (s < 10 ? '0' : '') + s
+}
+
+recordBtn.addEventListener('click', () => {
+  if (state.recording) { stopRecording(); return }
+  if (state.selectedIdx === null) return
+  startRecording()
+})
+
+playAudioBtn.addEventListener('click', playCellAudio)
+deleteAudioBtn.addEventListener('click', deleteCellAudio)
+
+// ── Grid resize (inmediato + al perder foco) ──
+rowsInput.addEventListener('input', resizeGrid)
+rowsInput.addEventListener('change', resizeGrid)
+colsInput.addEventListener('input', resizeGrid)
+colsInput.addEventListener('change', resizeGrid)
+nameInput.addEventListener('input', () => {
+  state.gridName = nameInput.value || 'Mi tablero'
+  scheduleAutoSave()
+})
+
+function resizeGrid() {
+  const newRows = Math.max(1, Math.min(12, parseInt(rowsInput.value) || 1))
+  const newCols = Math.max(1, Math.min(12, parseInt(colsInput.value) || 1))
+  const oldRows = state.rows
+  const oldCols = state.cols
+  const oldCells = state.cells.slice()
+  state.rows = newRows
+  state.cols = newCols
+  const total = newRows * newCols
+  const newCells = []
+  for (let r = 0; r < newRows; r++) {
+    for (let c = 0; c < newCols; c++) {
+      if (r < oldRows && c < oldCols) {
+        const idx = r * oldCols + c
+        newCells.push(idx < oldCells.length ? oldCells[idx] : makeCell())
+      } else {
+        newCells.push(makeCell())
+      }
+    }
+  }
+  state.cells = newCells
+  if (state.selectedIdx !== null && state.selectedIdx >= total) {
+    state.selectedIdx = null
+    closePanel()
+  }
+  renderGrid()
+  scheduleAutoSave()
+}
+
+// ── Click on grid cells ──
+function playCellAudioBuilder(idx) {
+  const c = state.cells[idx]
+  if (!c.label && !c.audioBase64) return
+  if (c.audioBase64) {
+    if (window.speechSynthesis) window.speechSynthesis.cancel()
+    const audio = new Audio(c.audioBase64)
+    audio.play().catch(() => {})
+    return
+  }
+  if (c.label && window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(c.label)
+    u.lang = 'es'; u.rate = 0.9; u.pitch = 1
+    window.speechSynthesis.speak(u)
+  }
+}
+
+gridEl.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cell')
+  if (!cell) return
+  const idx = parseInt(cell.dataset.idx)
+  playCellAudioBuilder(idx)
+  if (!state.playMode) selectCell(idx)
+})
+
+playModeBtn.addEventListener('click', () => {
+  state.playMode = !state.playMode
+  playModeBtn.textContent = state.playMode ? '✕ SALIR' : '▶ PROBAR'
+  playModeBtn.classList.toggle('active', state.playMode)
+  if (state.playMode) {
+    closePanel()
+    document.body.style.cursor = 'pointer'
+  } else {
+    document.body.style.cursor = ''
+  }
+})
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (state.editing) { closePanel(); return }
+  }
+  // Ctrl+F = enfocar búsqueda
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    if (state.editing) { e.preventDefault(); searchInput.focus(); searchInput.select(); return }
+  }
+  // Arrow keys to navigate grid
+  if (state.editing && (e.key.startsWith('Arrow') || e.key === 'Tab')) {
+    e.preventDefault()
+    const { rows, cols, selectedIdx } = state
+    let r = Math.floor(selectedIdx / cols)
+    let c = selectedIdx % cols
+    if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) c = Math.min(cols - 1, c + 1)
+    else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) c = Math.max(0, c - 1)
+    else if (e.key === 'ArrowDown') r = Math.min(rows - 1, r + 1)
+    else if (e.key === 'ArrowUp') r = Math.max(0, r - 1)
+    const newIdx = r * cols + c
+    if (newIdx !== selectedIdx) selectCell(newIdx)
+  }
+})
+
+// ── Export ──
+exportBtn.addEventListener('click', exportPlayer)
+
+async function exportPlayer() {
+  const cells = state.cells
+  const { rows, cols, gridName } = state
+  const total = cells.length
+  const hasPictos = cells.filter(c => c.pictogramUrl).length
+
+  showToast('⬇ Descargando pictogramas...', true)
+
+  try {
+    // Convert pictograms to base64 with progress
+    const cellData = []
+    let done = 0
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i]
+      let b64 = null
+      if (c.pictogramUrl) {
+        try {
+          b64 = await urlToBase64(c.pictogramUrl)
+        } catch (e) {
+          console.warn('Failed to fetch pictogram', c.pictogramId, e)
+        }
+        done++
+        if (hasPictos > 1) {
+          toastEl.textContent = '⬇ Descargando pictogramas... ' + done + '/' + hasPictos
+        }
+      }
+      cellData.push({
+        label: c.label || '',
+        bg: c.bgColor || '#ffffff',
+        fg: c.textColor || '#1c1917',
+        img: b64,
+        alt: c.pictogramLabel || '',
+        audio: c.audioBase64 || null
+      })
+    }
+
+    showToast('📦 Generando archivo...', true)
+    // Yield to let UI update
+    await new Promise(r => setTimeout(r, 50))
+
+    const playerHtml = generatePlayerHtml(rows, cols, gridName, cellData)
+    const blob = new Blob([playerHtml], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const filename = `${gridName.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    // Mostrar tamaño del archivo
+    const kb = (blob.size / 1024).toFixed(0)
+    showToast('✅ ' + filename + ' (' + kb + 'KB)')
+  } catch (err) {
+    showToast('Error: ' + err.message)
+  }
+}
+
+async function urlToBase64(url) {
+  const res = await fetch(url, { mode: 'cors' })
+  if (!res.ok) throw new Error('HTTP ' + res.status)
+  const blob = await res.blob()
+  const img = await createImageBitmap(blob)
+  // Redimensionar si es muy grande
+  const maxDim = 200
+  let w = img.width, h = img.height
+  if (w > maxDim || h > maxDim) {
+    const ratio = Math.min(maxDim / w, maxDim / h)
+    w = Math.round(w * ratio)
+    h = Math.round(h * ratio)
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+  img.close()
+  return canvas.toDataURL('image/png')
+}
+
+function generatePlayerHtml(rows, cols, name, cells) {
+  const cellHtml = cells.map((c, i) => {
+    const isEmpty = !c.img && !c.label
+    const cls = isEmpty ? ' class="c empty"' : ' class="c"'
+    const imgHtml = c.img ? `<img src="${c.img}" alt="${escapeHtml(c.alt)}">` : ''
+    const labelHtml = c.label ? `<span class="lbl">${escapeHtml(c.label)}</span>` : ''
+    return `<div${cls} data-i="${i}" style="background:${c.bg}; color:${c.fg}">${imgHtml}${labelHtml}</div>`
+  }).join('\n')
+
+  const gridStyle = `grid-template-columns: repeat(${cols}, 1fr); grid-template-rows: repeat(${rows}, 1fr)`
+
+  const audioData = cells.map(c => c.audio ? `"${c.audio}"` : 'null').join(',\n    ')
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>${escapeHtml(name)}</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; touch-action: manipulation; }
+.grid {
+  display: grid;
+  ${gridStyle};
+  gap: 3px;
+  padding: 3px;
+  height: 100%;
+  width: 100%;
+  background: #d4d4d4;
+}
+.c {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 4px;
+  touch-action: manipulation;
+  transition: transform 0.1s;
+}
+.c:active { transform: scale(0.95); }
+.c img {
+  max-width: 65%;
+  max-height: 55%;
+  pointer-events: none;
+  object-fit: contain;
+}
+.c .lbl {
+  font-size: clamp(10px, 2.5vmin, 18px);
+  text-align: center;
+  line-height: 1.2;
+  pointer-events: none;
+  padding: 2px;
+  font-weight: 500;
+  max-width: 100%;
+  word-break: break-word;
+}
+.c.empty { background: #f0f0f0; }
+@media (orientation: portrait) and (max-aspect-ratio: 3/4) {
+  .c .lbl { font-size: clamp(9px, 3vmin, 20px); }
+}
+</style>
+</head>
+<body>
+<div class="grid" id="g">
+${cellHtml}
+</div>
+<script>
+(function(){
+  var grid = document.getElementById('g');
+  var cells = grid.querySelectorAll('.c');
+  var utterance = null;
+  var audioData = [
+    ${audioData}
+  ];
+
+  function speak(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'es';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function playAudio(dataUri) {
+    window.speechSynthesis.cancel();
+    var audio = new Audio(dataUri);
+    audio.play().catch(function(){});
+  }
+
+  // Fullscreen on tap for older tablets (double-tap to fullscreen)
+  var fsEl = document.documentElement;
+  function toggleFS() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (fsEl.requestFullscreen) fsEl.requestFullscreen();
+      else if (fsEl.webkitRequestFullscreen) fsEl.webkitRequestFullscreen();
+    }
+  }
+
+  // Click handler — reproduce audio grabado o habla el texto
+  grid.addEventListener('click', function(e) {
+    var cell = e.target.closest('.c');
+    if (!cell || cell.classList.contains('empty')) return;
+    var idx = parseInt(cell.getAttribute('data-i'));
+    if (audioData[idx]) {
+      playAudio(audioData[idx]);
+      return;
+    }
+    var label = cell.querySelector('.lbl');
+    if (label && label.textContent.trim()) {
+      speak(label.textContent.trim());
+    }
+  });
+
+  // Long-press → fullscreen
+  var pressTimer = null;
+  grid.addEventListener('touchstart', function(e) {
+    pressTimer = setTimeout(toggleFS, 800);
+  });
+  grid.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+  grid.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
+})();
+<\/script>
+</body>
+</html>`
+}
+ 
+// ── Import ──
+importBtn.addEventListener('click', () => importFileInput.click())
+
+importFileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  try {
+    const text = await file.text()
+    importFromHtml(text)
+    showToast('📂 Tablero importado')
+  } catch (err) {
+    showToast('Error al importar: ' + err.message)
+  }
+  importFileInput.value = ''
+})
+
+function importFromHtml(html) {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  const grid = doc.getElementById('g')
+  if (!grid) throw new Error('No se encontró la grilla en el archivo')
+
+  // Dimensiones desde CSS
+  const styleText = doc.querySelector('style')?.textContent || ''
+  const colsMatch = styleText.match(/grid-template-columns:\s*repeat\((\d+),\s*1fr\)/)
+  const rowsMatch = styleText.match(/grid-template-rows:\s*repeat\((\d+),\s*1fr\)/)
+  const cols = colsMatch ? parseInt(colsMatch[1]) : 4
+  const rows = rowsMatch ? parseInt(rowsMatch[1]) : 4
+
+  // Audio data desde el script
+  let audioData = []
+  const audioMatch = html.match(/var audioData\s*=\s*\[([\s\S]*?)\]\s*;/)
+  if (audioMatch) {
+    try { audioData = JSON.parse('[' + audioMatch[1] + ']') } catch (e) { audioData = [] }
+  }
+
+  // Celdas
+  const cellEls = grid.querySelectorAll('.c')
+  const newCells = []
+  cellEls.forEach((el, i) => {
+    const st = el.getAttribute('style') || ''
+    const bg = st.match(/background:\s*(#[0-9a-fA-F]+)/)?.[1] || '#ffffff'
+    const fg = st.match(/color:\s*(#[0-9a-fA-F]+)/)?.[1] || '#1c1917'
+    const imgEl = el.querySelector('img')
+    const labelEl = el.querySelector('.lbl')
+    const label = labelEl ? labelEl.textContent.trim() : ''
+    newCells.push({
+      pictogramId: null,
+      pictogramUrl: imgEl ? imgEl.getAttribute('src') : null,
+      pictogramLabel: label || null,
+      label: label,
+      bgColor: bg,
+      textColor: fg,
+      audioBase64: audioData[i] || null
+    })
+  })
+
+  const total = rows * cols
+  while (newCells.length < total) newCells.push(makeCell())
+
+  state.rows = rows
+  state.cols = cols
+  state.cells = newCells
+  state.gridName = doc.title || 'Mi tablero'
+  state.selectedIdx = null
+  rowsInput.value = rows
+  colsInput.value = cols
+  nameInput.value = state.gridName
+  closePanel()
+  renderGrid()
+  saveState()
+}
+
+// ── Auto-save to localStorage ──
+let autoSaveTimer = null
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(saveState, 500)
+}
+
+function saveState() {
+  try {
+    const data = {
+      rows: state.rows,
+      cols: state.cols,
+      cells: state.cells,
+      gridName: state.gridName
+    }
+    localStorage.setItem('pictablero-builder', JSON.stringify(data))
+  } catch (e) { /* storage full, ignore */ }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('pictablero-builder')
+    if (!raw) return false
+    const data = JSON.parse(raw)
+    if (!data.cells || !Array.isArray(data.cells)) return false
+    // Migrar celdas viejas (sin audioBase64)
+    data.cells = data.cells.map(c => ({ ...makeCell(), ...c }))
+    state.rows = data.rows || 4
+    state.cols = data.cols || 4
+    state.cells = data.cells
+    state.gridName = data.gridName || 'Mi tablero'
+    rowsInput.value = state.rows
+    colsInput.value = state.cols
+    nameInput.value = state.gridName
+    return true
+  } catch (e) { return false }
+}
+
+// ── Clear ──
+clearBtn.addEventListener('click', () => {
+  if (!confirm('¿Vaciar todo el tablero?')) return
+  resetCells()
+  state.selectedIdx = null
+  closePanel()
+  renderGrid()
+  saveState()
+  showToast('Tablero limpiado')
+})
+
+// ── Toast ──
+function showToast(msg, persist) {
+  toastEl.textContent = msg
+  toastEl.classList.add('show')
+  clearTimeout(toastEl._hideTimer)
+  if (!persist) {
+    toastEl._hideTimer = setTimeout(() => toastEl.classList.remove('show'), 2500)
+  }
+}
+
+// ── Keyboard global shortcuts ──
+document.addEventListener('keydown', (e) => {
+  // Ctrl+S = save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    saveState()
+    showToast('Guardado')
+  }
+  // Ctrl+E = export
+  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+    e.preventDefault()
+    exportBtn.click()
+  }
+})
+
+// ── Init ──
+const loaded = loadState()
+if (!loaded) resetCells()
+renderGrid()
+
+// Diagnostic: qué soporta el navegador
+if (typeof MediaRecorder !== 'undefined') {
+  const types = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg','audio/mp4','audio/mpeg']
+  const supported = types.filter(t => MediaRecorder.isTypeSupported(t))
+  console.log('🎙 Formatos de audio soportados:', supported.length ? supported : 'ninguno (solo default)')
+} else {
+  console.log('🎙 MediaRecorder no disponible')
+}
+
+function bindEvents() {
+  // placeholder — todos los eventos se asignan directamente
+}
+</script>
+</body>
+</html>
