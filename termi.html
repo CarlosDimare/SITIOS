@@ -374,11 +374,41 @@
     background: var(--amber);
     color: var(--bg);
   }
+  #model-selector {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 50;
+    display: flex;
+    gap: 4px;
+  }
+  #model-selector button {
+    padding: 4px 8px;
+    font-size: 10px;
+    border: 1px solid #333;
+    background: var(--bg2);
+    color: var(--amber-dim);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  #model-selector button.active {
+    background: var(--amber);
+    color: var(--bg);
+    border-color: var(--amber);
+  }
+  #model-selector button:hover:not(.active) {
+    border-color: var(--amber-dim);
+  }
 </style>
 </head>
 <body>
 
 <button id="toggle-sidebar">HIST</button>
+
+<div id="model-selector">
+  <button id="btn-omniroute" class="active">OMNIROUTE</button>
+  <button id="btn-hermes">HERMES</button>
+</div>
 
 <div id="sidebar">
   <div id="sidebar-header">
@@ -407,6 +437,12 @@ const FETCH_URL = "https://search-gateway-973811062473.us-central1.run.app/fetch
 const API_KEY = "sk-5f238e76072d7926-5ee294-b5cebce8";
 const MODEL = "deepseek-v4-flash-free";
 const MAX_SEARCH_RESULTS = 8;
+
+const HERMES_URL = "https://hermes-973811062473.us-central1.run.app/v1/chat/completions";
+const HERMES_KEY = "2064d64a3665c26f954ade9452c6d4b6ffe974f35d34c2b8bb246e491749f461";
+const HERMES_MODEL = "hermes-agent";
+
+let currentMode = localStorage.getItem("termi_mode") || "omniroute";
 
 function getSystemPrompt() {
   const now = new Date();
@@ -544,9 +580,10 @@ function renderConvList() {
 
 function showBootSequence() {
   history = [];
+  const modeLabel = currentMode === 'hermes' ? 'HERMES' : 'OMNIRoute';
   const bootLines = [
-    'OMNICHAT v2.0',
-    'cargando modelos... ok',
+    'TERMi v2.0',
+    'modelo: ' + modeLabel + '... ok',
     'busqueda web... ok',
     'memoria... ok',
     '',
@@ -604,6 +641,28 @@ toggleBtn.addEventListener('click', () => {
   toggleBtn.textContent = sidebar.classList.contains('open') ? 'CERRAR' : 'HIST';
 });
 
+const btnOmni = document.getElementById('btn-omniroute');
+const btnHermes = document.getElementById('btn-hermes');
+
+function updateModelUI() {
+  btnOmni.classList.toggle('active', currentMode === 'omniroute');
+  btnHermes.classList.toggle('active', currentMode === 'hermes');
+}
+
+btnOmni.addEventListener('click', () => {
+  currentMode = 'omniroute';
+  localStorage.setItem('termi_mode', 'omniroute');
+  updateModelUI();
+});
+
+btnHermes.addEventListener('click', () => {
+  currentMode = 'hermes';
+  localStorage.setItem('termi_mode', 'hermes');
+  updateModelUI();
+});
+
+updateModelUI();
+
 const TOOLS = [{
   type: "function",
   function: {
@@ -653,9 +712,10 @@ if (history.length) {
     else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
   }
 } else {
+  const modeLabel = currentMode === 'hermes' ? 'HERMES' : 'OMNIRoute';
   const bootLines = [
-    'OMNICHAT v2.0',
-    'cargando modelos... ok',
+    'TERMi v2.0',
+    'modelo: ' + modeLabel + '... ok',
     'busqueda web... ok',
     'memoria... ok',
     '',
@@ -777,12 +837,17 @@ function formatToolResults(results) {
 }
 
 async function callOmniRoute(messages, opts = {}) {
-  const body = { model: MODEL, messages: [getSystemPrompt(), ...messages] };
-  if (opts.tools) body.tools = TOOLS;
+  const isHermes = currentMode === 'hermes';
+  const url = isHermes ? HERMES_URL : API_URL;
+  const key = isHermes ? HERMES_KEY : API_KEY;
+  const model = isHermes ? HERMES_MODEL : MODEL;
+
+  const body = { model, messages: [getSystemPrompt(), ...messages] };
+  if (opts.tools && !isHermes) body.tools = TOOLS;
   body.stream = !!opts.stream;
-  const res = await fetch(API_URL, {
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
     body: JSON.stringify(body)
   });
   if (!res.ok) {
@@ -805,12 +870,15 @@ async function callOmniRoute(messages, opts = {}) {
 }
 
 async function streamContent(messages, onDelta, opts = {}) {
-  const model = opts.noTools ? 'auto' : MODEL;
+  const isHermes = currentMode === 'hermes';
+  const url = isHermes ? HERMES_URL : API_URL;
+  const key = isHermes ? HERMES_KEY : API_KEY;
+  const model = isHermes ? HERMES_MODEL : (opts.noTools ? 'auto' : MODEL);
   const body = { model, messages: [getSystemPrompt(), ...messages], stream: true };
-  if (!opts.noTools) body.tools = TOOLS;
-  const res = await fetch(API_URL, {
+  if (!opts.noTools && !isHermes) body.tools = TOOLS;
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
     body: JSON.stringify(body)
   });
   if (!res.ok) {
@@ -857,78 +925,94 @@ async function send(text) {
   let toolResults = [];
 
   try {
-    let round = 1;
-    act = addActivity('analizando consulta...');
-    let result = await callOmniRoute(history, { tools: true });
-    let { content, toolCalls } = result;
-
-    while (toolCalls.length && round <= 3) {
-      removeEl(act);
-      const toolNames = toolCalls.map(tc => tc.name);
-      act = addActivity('ejecutando ' + toolNames.join(', ') + ' (ronda ' + round + ')...');
-
-      history.push({ role: 'assistant', content: content || null, tool_calls: toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } })) });
-
-      for (const tc of toolCalls) {
-        try {
-          const args = JSON.parse(tc.arguments || '{}');
-          if (tc.name === 'web_search') {
-            const query = args.query || '';
-            if (!query) { history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: query vacia' }); continue; }
-            const { results, provider } = await searchWeb(query);
-            toolResults.push(...results);
-            history.push({ role: 'tool', tool_call_id: tc.id, content: formatToolResults(results) + '\n[provider: ' + provider + ']' });
-          } else if (tc.name === 'web_fetch') {
-            const url = args.url || '';
-            if (!url) { history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: url vacia' }); continue; }
-            const data = await fetchWeb(url);
-            const contentText = data.content ? data.content.slice(0, 4000) : 'sin contenido';
-            toolResults.push({ title: data.title || url, link: data.url || url, snippet: contentText.slice(0, 500), content: contentText, source: data.provider || 'firecrawl' });
-            history.push({ role: 'tool', tool_call_id: tc.id, content: 'Contenido de ' + (data.title || url) + ':\n' + contentText });
-          }
-        } catch (err) {
-          history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: ' + err.message });
-        }
+    if (currentMode === 'hermes') {
+      act = addActivity('enviando a Hermes...');
+      const bubble = addMsg('bot', '');
+      bubble.classList.add('typing-anim');
+      let finalContent = '';
+      await streamContent(history, (t) => { finalContent = t; bubble.innerHTML = renderMarkdown(t); });
+      bubble.classList.remove('typing-anim');
+      if (!finalContent.trim()) {
+        bubble.textContent = '[sin respuesta]';
+        bubble.className += ' error';
       }
+      history.push({ role: 'assistant', content: finalContent });
+      saveToActiveConv();
       removeEl(act);
-      act = addActivity('procesando ' + toolResults.length + ' resultados...', 'done');
+    } else {
+      let round = 1;
+      act = addActivity('analizando consulta...');
+      let result = await callOmniRoute(history, { tools: true });
+      let { content, toolCalls } = result;
 
-      round++;
-      result = await callOmniRoute(history, { tools: true });
-      content = result.content;
-      toolCalls = result.toolCalls;
+      while (toolCalls.length && round <= 3) {
+        removeEl(act);
+        const toolNames = toolCalls.map(tc => tc.name);
+        act = addActivity('ejecutando ' + toolNames.join(', ') + ' (ronda ' + round + ')...');
+
+        history.push({ role: 'assistant', content: content || null, tool_calls: toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } })) });
+
+        for (const tc of toolCalls) {
+          try {
+            const args = JSON.parse(tc.arguments || '{}');
+            if (tc.name === 'web_search') {
+              const query = args.query || '';
+              if (!query) { history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: query vacia' }); continue; }
+              const { results, provider } = await searchWeb(query);
+              toolResults.push(...results);
+              history.push({ role: 'tool', tool_call_id: tc.id, content: formatToolResults(results) + '\n[provider: ' + provider + ']' });
+            } else if (tc.name === 'web_fetch') {
+              const url = args.url || '';
+              if (!url) { history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: url vacia' }); continue; }
+              const data = await fetchWeb(url);
+              const contentText = data.content ? data.content.slice(0, 4000) : 'sin contenido';
+              toolResults.push({ title: data.title || url, link: data.url || url, snippet: contentText.slice(0, 500), content: contentText, source: data.provider || 'firecrawl' });
+              history.push({ role: 'tool', tool_call_id: tc.id, content: 'Contenido de ' + (data.title || url) + ':\n' + contentText });
+            }
+          } catch (err) {
+            history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: ' + err.message });
+          }
+        }
+        removeEl(act);
+        act = addActivity('procesando ' + toolResults.length + ' resultados...', 'done');
+
+        round++;
+        result = await callOmniRoute(history, { tools: true });
+        content = result.content;
+        toolCalls = result.toolCalls;
+      }
+
+      removeEl(act);
+      act = addActivity('generando respuesta...', 'done');
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' });
+      const searchContext = toolResults.length
+        ? '\nFecha de hoy: ' + dateStr + '\nResultados de busqueda:\n' + toolResults.map((r, i) =>
+          (i+1) + '. ' + (r.title||'') + (r.date ? ' [' + r.date + ']' : '') + '\n   ' + (r.snippet||'') +
+          (r.content ? '\n   CONTENIDO: ' + r.content.slice(0, 2000) : '') +
+          '\n   URL: ' + (r.link||'')
+        ).join('\n\n') + '\n\nUsa markdown: **negritas**, tablas, listas. Links asi: [titulo](url). Maximo 2-3 fuentes. Verifica la fecha del articulo antes de responder.'
+        : '';
+      const cleanHistory = searchContext
+        ? [{ role: 'user', content: text + searchContext }]
+        : history;
+
+      const bubble = addMsg('bot', '');
+      bubble.classList.add('typing-anim');
+      addSourcesFooter(bubble, toolResults);
+      let finalContent = '';
+      await streamContent(cleanHistory, (t) => { finalContent = t; bubble.innerHTML = renderMarkdown(t); }, { noTools: true });
+      bubble.classList.remove('typing-anim');
+      if (!finalContent.trim()) {
+        bubble.textContent = '[sin respuesta]';
+        bubble.className += ' error';
+      }
+      history.push({ role: 'assistant', content: finalContent });
+      saveToActiveConv();
+
+      removeEl(act);
     }
-
-    removeEl(act);
-    act = addActivity('generando respuesta...', 'done');
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' });
-    const searchContext = toolResults.length
-      ? '\nFecha de hoy: ' + dateStr + '\nResultados de busqueda:\n' + toolResults.map((r, i) =>
-        (i+1) + '. ' + (r.title||'') + (r.date ? ' [' + r.date + ']' : '') + '\n   ' + (r.snippet||'') +
-        (r.content ? '\n   CONTENIDO: ' + r.content.slice(0, 2000) : '') +
-        '\n   URL: ' + (r.link||'')
-      ).join('\n\n') + '\n\nUsa markdown: **negritas**, tablas, listas. Links asi: [titulo](url). Maximo 2-3 fuentes. Verifica la fecha del articulo antes de responder.'
-      : '';
-    const cleanHistory = searchContext
-      ? [{ role: 'user', content: text + searchContext }]
-      : history;
-
-    const bubble = addMsg('bot', '');
-    bubble.classList.add('typing-anim');
-    addSourcesFooter(bubble, toolResults);
-    let finalContent = '';
-    await streamContent(cleanHistory, (t) => { finalContent = t; bubble.innerHTML = renderMarkdown(t); }, { noTools: true });
-    bubble.classList.remove('typing-anim');
-    if (!finalContent.trim()) {
-      bubble.textContent = '[sin respuesta]';
-      bubble.className += ' error';
-    }
-    history.push({ role: 'assistant', content: finalContent });
-    saveToActiveConv();
-
-    removeEl(act);
   } catch (err) {
     removeEl(act);
     addMsg('error', 'error: ' + err.message);
