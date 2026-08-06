@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Termi</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Termi">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --amber: #ffb000;
+    --amber-dim: #996600;
+    --amber-glow: rgba(255, 176, 0, 0.35);
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --scanline: rgba(0, 0, 0, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--amber);
+    font-family: 'Fira Code', 'Courier New', monospace;
+    display: flex;
+    flex-direction: row;
+    font-size: 14px;
+  }
+  /* CRT screen container */
+  #crt {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    margin: 4px;
+  }
+  /* CRT curvature */
+  #crt::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);
+    pointer-events: none;
+    z-index: 11;
+  }
+  /* Subtle screen glow */
+  #crt::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 120px rgba(255, 176, 0, 0.05);
+    pointer-events: none;
+    z-index: 10;
+  }
+  /* Scanlines */
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.06) 2px,
+      rgba(0, 0, 0, 0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 12;
+  }
+  /* Chat area */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 3%, black 97%, transparent 100%);
+  }
+  #chat::-webkit-scrollbar { width: 6px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb { background: var(--amber-dim); border-radius: 3px; }
+  .msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    line-height: 1.6;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    animation: fadeIn .15s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .msg.user {
+    align-self: flex-end;
+    color: #555;
+    border: 1px solid #333;
+    border-right: 2px solid var(--amber-dim);
+  }
+  .msg.user::before { content: '> '; color: var(--amber-dim); }
+  .msg.bot {
+    align-self: flex-start;
+    color: var(--amber);
+    text-shadow: 0 0 8px var(--amber-glow);
+    line-height: 1.7;
+  }
+  .msg.bot strong { color: #fff; font-weight: 600; text-shadow: 0 0 10px var(--amber-glow); }
+  .msg.bot code {
+    background: rgba(255, 176, 0, 0.1);
+    border: 1px solid #333;
+    padding: 1px 5px;
+    font-size: 12px;
+    color: #fff;
+  }
+  .msg.bot a {
+    color: var(--amber);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .msg.bot a:hover { color: #fff; }
+  .msg.bot table {
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 12px;
+    width: 100%;
+  }
+  .msg.bot th, .msg.bot td {
+    border: 1px solid #444;
+    padding: 4px 8px;
+    text-align: left;
+  }
+  .msg.bot th {
+    background: rgba(255, 176, 0, 0.15);
+    color: #fff;
+    font-weight: 600;
+  }
+  .msg.bot .md-h1, .msg.bot .md-h2, .msg.bot .md-h3 {
+    color: #fff;
+    font-weight: 600;
+    margin: 6px 0 2px;
+    text-shadow: 0 0 8px var(--amber-glow);
+  }
+  .msg.bot .md-h1 { font-size: 15px; }
+  .msg.bot .md-h2 { font-size: 14px; }
+  .msg.bot .md-h3 { font-size: 13px; }
+  .msg.bot .md-li { padding-left: 8px; }
+  .msg.bot.typing-anim {
+    border-right: 2px solid var(--amber);
+    animation: typewriter-cursor .6s step-end infinite;
+  }
+  @keyframes typewriter-cursor { 0%,50%{border-color:var(--amber)} 51%,100%{border-color:transparent} }
+  .msg.error {
+    color: #ff4444;
+    border: 1px solid #661111;
+    text-shadow: 0 0 6px rgba(255, 0, 0, 0.3);
+  }
+  /* Activity log */
+  .activity {
+    align-self: flex-start;
+    font-size: 11px;
+    color: var(--amber-dim);
+    padding: 4px 0;
+    opacity: 0.7;
+    animation: fadeIn .2s;
+  }
+  .activity::before { content: '[*] '; color: var(--amber); opacity: 0.5; }
+  .activity.done::before { content: '[ok] '; }
+  .activity.error::before { content: '[!!] '; color: #ff4444; }
+  /* Sources footer */
+  .sources {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #333;
+    font-size: 11px;
+    color: var(--amber-dim);
+  }
+  .sources a {
+    color: var(--amber-dim);
+    text-decoration: none;
+    opacity: 0.8;
+    transition: all .15s;
+  }
+  .sources a:hover { opacity: 1; color: var(--amber); text-decoration: underline; }
+  /* Input area */
+  #input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid #333;
+    background: var(--bg2);
+    z-index: 5;
+  }
+  #input-area .prompt {
+    color: var(--amber);
+    font-weight: 600;
+    line-height: 38px;
+    text-shadow: 0 0 6px var(--amber-glow);
+    user-select: none;
+  }
+  textarea {
+    flex: 1;
+    resize: none;
+    background: transparent;
+    border: 1px solid #333;
+    color: var(--amber);
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    min-height: 38px;
+    max-height: 120px;
+    line-height: 1.5;
+    text-shadow: 0 0 6px var(--amber-glow);
+    caret-color: var(--amber);
+  }
+  textarea::placeholder { color: #555; text-shadow: none; }
+  textarea:focus { border-color: var(--amber-dim); }
+  button {
+    background: transparent;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    padding: 0 16px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all .15s;
+  }
+  button:hover {
+    background: var(--amber);
+    color: var(--bg);
+    box-shadow: 0 0 12px var(--amber-glow);
+  }
+  button:disabled { opacity: .3; cursor: not-allowed; }
+  /* Typing indicator */
+  .typing {
+    align-self: flex-start;
+    font-size: 13px;
+    color: var(--amber-dim);
+    padding: 6px 0;
+  }
+  .typing::after {
+    content: '...';
+    animation: dots 1.2s step-end infinite;
+  }
+  @keyframes dots {
+    0% { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+  }
+  /* Responsive */
+  @media (max-width: 640px) {
+    .msg { max-width: 92%; }
+    #sidebar {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      width: 100%;
+      min-width: 100%;
+      margin-left: -100%;
+    }
+    #sidebar.open {
+      margin-left: 0;
+    }
+  }
+  /* History sidebar */
+  #sidebar {
+    width: 260px;
+    min-width: 260px;
+    height: 100%;
+    background: var(--bg2);
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: margin-left .2s;
+    margin-left: -260px;
+  }
+  #sidebar.open {
+    margin-left: 0;
+  }
+  #sidebar-header {
+    padding: 12px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #sidebar-header .brand {
+    font-size: 11px;
+    color: var(--amber-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  #new-conv-btn {
+    width: 100%;
+    padding: 6px 0;
+    font-size: 11px;
+    background: transparent;
+    border: 1px dashed var(--amber-dim);
+    color: var(--amber);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  #new-conv-btn:hover {
+    background: var(--amber);
+    color: var(--bg);
+    border-style: solid;
+  }
+  #conv-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  #conv-list::-webkit-scrollbar { width: 4px; }
+  #conv-list::-webkit-scrollbar-thumb { background: var(--amber-dim); border-radius: 2px; }
+  .conv-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #1a1a1a;
+    transition: background .1s;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .conv-item:hover { background: rgba(255, 176, 0, 0.05); }
+  .conv-item.active {
+    background: rgba(255, 176, 0, 0.1);
+    border-left: 2px solid var(--amber);
+  }
+  .conv-item .conv-title {
+    font-size: 12px;
+    color: var(--amber);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .conv-item .conv-date {
+    font-size: 10px;
+    color: var(--amber-dim);
+    opacity: 0.6;
+  }
+  .conv-item .conv-delete {
+    font-size: 10px;
+    color: #663333;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+    align-self: flex-end;
+  }
+  .conv-item:hover .conv-delete { opacity: 1; }
+  .conv-item .conv-delete:hover { color: #ff4444; }
+  #toggle-sidebar {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 50;
+    background: var(--bg2);
+    border: 1px solid #333;
+    color: var(--amber);
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  #toggle-sidebar:hover {
+    background: var(--amber);
+    color: var(--bg);
+  }
+</style>
+</head>
+<body>
+
+<button id="toggle-sidebar">HIST</button>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <button id="new-conv-btn">+ NUEVA</button>
+  </div>
+  <div id="conv-list"></div>
+</div>
+
+<div id="crt">
+  <div class="scanlines"></div>
+  <div id="chat" aria-live="polite"></div>
+
+  <form id="form" autocomplete="off">
+    <div id="input-area">
+      <span class="prompt">&gt;</span>
+      <textarea id="input" rows="1" placeholder="tu consulta..." required></textarea>
+      <button id="send" type="submit">ENVIAR</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const API_URL = "https://omniroute-973811062473.us-central1.run.app/v1/chat/completions";
+const SEARCH_URL = "https://search-gateway-973811062473.us-central1.run.app/search";
+const FETCH_URL = "https://search-gateway-973811062473.us-central1.run.app/fetch";
+const API_KEY = "sk-5f238e76072d7926-5ee294-b5cebce8";
+const MODEL = "deepseek-v4-flash-free";
+const MAX_SEARCH_RESULTS = 8;
+
+function getSystemPrompt() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' });
+  const timeStr = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' });
+  return {
+    role: "system",
+    content: `Sos Termi, un agente CLI con estilo terminal retro. Usas formato markdown: **negritas**, tablas, listas, bloques de codigo, \`inline code\`.
+
+Hoy es ${dateStr}, ${timeStr} (ART). USA ESTA FECHA para noticias, horarios, deportes, y cualquier cosa temporal.
+
+FORMATO DE RESPUESTA:
+- Usa tablas para comparar datos, horarios, estadisticas
+- Usa **negritas** para destacar datos clave
+- Usa listas cuando hay multiples puntos
+- Usa bloques de codigo para comandos, configs, o datos estructurados
+- Links asi: [titulo](url corta). No pegues URLs crudas largas. Si la URL es larga, extrae el dominio y ponlo como texto: [ej: infobae.com]
+- Maximo 2-3 fuentes por respuesta
+
+BUSQUEDA: Si preguntan por noticias, deportes, clima, precios, horarios o cualquier cosa que cambie con el tiempo, usa web_search. Si la busqueda no da suficiente contenido, usa web_fetch para obtener el texto completo de una fuente. Si no, responde de memoria.
+
+HORARIOS DE PARTIDOS: Si buscan hora de partido, dale la hora exacta con zona horaria. No digas "no se encontro". Si tenes fecha de publicacion del articulo, verificala.
+
+PERSPECTIVA DE CLASE: Miras las cosas desde los de abajo. Critico con el poder concentrado, monopolios, explotacion laboral, desigualdad. Con datos y argumentos, no con insultos. No sos panfletario.
+
+STYLE: Terminal CRT ambar. Sin emojis. Directo.`
+  };
+}
+
+const CONVERSATIONS_KEY = "omnichat_conversations";
+const CURRENT_CONV_KEY = "omnichat_current";
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function loadConversations() {
+  try {
+    const data = localStorage.getItem(CONVERSATIONS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
+}
+
+function saveConversations() {
+  try {
+    localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
+  } catch {}
+}
+
+function getCurrentConvId() {
+  return localStorage.getItem(CURRENT_CONV_KEY) || '';
+}
+
+function setCurrentConvId(id) {
+  localStorage.setItem(CURRENT_CONV_KEY, id);
+}
+
+function getActiveConv() {
+  return conversations.find(c => c.id === currentConvId);
+}
+
+function createConversation(firstMsg) {
+  const conv = {
+    id: generateId(),
+    title: firstMsg.slice(0, 50) + (firstMsg.length > 50 ? '...' : ''),
+    timestamp: Date.now(),
+    messages: []
+  };
+  conversations.unshift(conv);
+  currentConvId = conv.id;
+  setCurrentConvId(currentConvId);
+  saveConversations();
+  renderConvList();
+  return conv;
+}
+
+function deleteConversation(id) {
+  conversations = conversations.filter(c => c.id !== id);
+  if (currentConvId === id) {
+    currentConvId = conversations[0]?.id || '';
+    setCurrentConvId(currentConvId);
+    loadActiveConv();
+  }
+  saveConversations();
+  renderConvList();
+}
+
+function switchConversation(id) {
+  currentConvId = id;
+  setCurrentConvId(currentConvId);
+  saveConversations();
+  loadActiveConv();
+  renderConvList();
+}
+
+function loadActiveConv() {
+  chat.innerHTML = '';
+  const conv = getActiveConv();
+  if (!conv || !conv.messages.length) {
+    showBootSequence();
+    return;
+  }
+  history = conv.messages;
+  for (const m of history) {
+    if (m.role === 'user') addMsg('user', m.content);
+    else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
+  }
+}
+
+function renderConvList() {
+  const list = document.getElementById('conv-list');
+  list.innerHTML = '';
+  for (const conv of conversations) {
+    const item = document.createElement('div');
+    item.className = 'conv-item' + (conv.id === currentConvId ? ' active' : '');
+    const date = new Date(conv.timestamp);
+    const dateStr = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' +
+                    date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    item.innerHTML = `
+      <div class="conv-title">${escapeHtml(conv.title)}</div>
+      <div class="conv-date">${dateStr}</div>
+      <div class="conv-delete" data-id="${conv.id}">x</div>
+    `;
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('conv-delete')) return;
+      switchConversation(conv.id);
+    });
+    item.querySelector('.conv-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteConversation(conv.id);
+    });
+    list.appendChild(item);
+  }
+}
+
+function showBootSequence() {
+  history = [];
+  const bootLines = [
+    'OMNICHAT v2.0',
+    'cargando modelos... ok',
+    'busqueda web... ok',
+    'memoria... ok',
+    '',
+    'listo. escribi tu consulta.'
+  ];
+  let i = 0;
+  function bootLine() {
+    if (i >= bootLines.length) return;
+    const div = document.createElement('div');
+    div.className = 'activity done';
+    div.textContent = bootLines[i];
+    div.style.opacity = '1';
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    i++;
+    if (i < bootLines.length) setTimeout(bootLine, 200 + Math.random() * 150);
+    else setTimeout(() => { chat.innerHTML = ''; }, 1200);
+  }
+  bootLine();
+}
+
+let conversations = loadConversations();
+let currentConvId = getCurrentConvId();
+let history = [];
+let busy = false;
+
+const chat = document.getElementById('chat');
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+// Ensure at least one conversation exists
+if (!conversations.length) {
+  const conv = createConversation('nueva conversacion');
+  history = conv.messages;
+} else if (!currentConvId || !conversations.find(c => c.id === currentConvId)) {
+  currentConvId = conversations[0].id;
+  setCurrentConvId(currentConvId);
+}
+
+renderConvList();
+loadActiveConv();
+
+// New conversation button
+document.getElementById('new-conv-btn').addEventListener('click', () => {
+  const conv = createConversation('nueva conversacion');
+  history = conv.messages;
+  loadActiveConv();
+});
+
+const toggleBtn = document.getElementById('toggle-sidebar');
+const sidebar = document.getElementById('sidebar');
+toggleBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  toggleBtn.textContent = sidebar.classList.contains('open') ? 'CERRAR' : 'HIST';
+});
+
+const TOOLS = [{
+  type: "function",
+  function: {
+    name: "web_search",
+    description: "Busca en internet informacion actual. Incluye fecha en la query si es sobre noticias o eventos recientes.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "busqueda concisa, incluye 'hoy' o la fecha si es relevante" }
+      },
+      required: ["query"]
+    }
+  }
+}, {
+  type: "function",
+  function: {
+    name: "web_fetch",
+    description: "Obtiene el contenido completo de una pagina web en markdown. Usa cuando web_search no da suficiente detalle o necesitas el texto completo de un articulo.",
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL de la pagina a fetchear" }
+      },
+      required: ["url"]
+    }
+  }
+}];
+
+function saveToActiveConv() {
+  const conv = getActiveConv();
+  if (conv) {
+    conv.messages = history.slice(-40);
+    // Update title from first user message
+    const firstUser = history.find(m => m.role === 'user');
+    if (firstUser) {
+      conv.title = firstUser.content.slice(0, 50) + (firstUser.content.length > 50 ? '...' : '');
+    }
+    conv.timestamp = Date.now();
+    saveConversations();
+    renderConvList();
+  }
+}
+
+if (history.length) {
+  for (const m of history) {
+    if (m.role === 'user') addMsg('user', m.content);
+    else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
+  }
+} else {
+  const bootLines = [
+    'OMNICHAT v2.0',
+    'cargando modelos... ok',
+    'busqueda web... ok',
+    'memoria... ok',
+    '',
+    'listo. escribi tu consulta.'
+  ];
+  let i = 0;
+  function bootLine() {
+    if (i >= bootLines.length) return;
+    const div = document.createElement('div');
+    div.className = 'activity done';
+    div.textContent = bootLines[i];
+    div.style.opacity = '1';
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    i++;
+    if (i < bootLines.length) setTimeout(bootLine, 200 + Math.random() * 150);
+    else setTimeout(() => { chat.innerHTML = ''; }, 1200);
+  }
+  bootLine();
+}
+
+function renderMarkdown(text) {
+  if (!text) return '';
+  let html = escapeHtml(text);
+  // bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // inline code
+  html = html.replace(/\`(.+?)\`/g, '<code>$1</code>');
+  // links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // tables (detect markdown tables)
+  html = html.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (_, header, sep, body) => {
+    const ths = header.split('|').filter(c => c.trim()).map(c => '<th>' + c.trim() + '</th>').join('');
+    const rows = body.trim().split('\n').map(row => {
+      const tds = row.split('|').filter(c => c.trim()).map(c => '<td>' + c.trim() + '</td>').join('');
+      return '<tr>' + tds + '</tr>';
+    }).join('');
+    return '<table><thead><tr>' + ths + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  });
+  // headers
+  html = html.replace(/^### (.+)$/gm, '<div class="md-h3">$1</div>');
+  html = html.replace(/^## (.+)$/gm, '<div class="md-h2">$1</div>');
+  html = html.replace(/^# (.+)$/gm, '<div class="md-h1">$1</div>');
+  // lists
+  html = html.replace(/^- (.+)$/gm, '<div class="md-li">- $1</div>');
+  // line breaks
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+function addMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  if (role === 'bot') {
+    div.innerHTML = renderMarkdown(text);
+  } else {
+    div.textContent = text;
+  }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function addActivity(text, type) {
+  const div = document.createElement('div');
+  div.className = 'activity' + (type ? ' ' + type : '');
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function removeEl(el) { if (el && el.parentNode) el.remove(); }
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function addSourcesFooter(bubble, results) {
+  const unique = [];
+  const seen = new Set();
+  for (const r of results) {
+    if (!r.title || seen.has(r.title)) continue;
+    seen.add(r.title);
+    unique.push(r);
+    if (unique.length >= 3) break;
+  }
+  if (!unique.length) return;
+  const foot = document.createElement('div');
+  foot.className = 'sources';
+  foot.innerHTML = unique.map(r => {
+    const domain = r.link ? new URL(r.link).hostname.replace('www.', '') : '';
+    return '<a href="' + escapeHtml(r.link) + '" target="_blank" rel="noopener">' + escapeHtml(domain || r.title) + '</a>';
+  }).join(' | ');
+  bubble.appendChild(foot);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function searchWeb(query) {
+  const res = await fetch(SEARCH_URL + '?q=' + encodeURIComponent(query) + '&max=' + MAX_SEARCH_RESULTS);
+  if (!res.ok) throw new Error('search ' + res.status);
+  const data = await res.json();
+  return { results: data.results || [], provider: data.provider || 'unknown' };
+}
+
+async function fetchWeb(url) {
+  const res = await fetch(FETCH_URL + '?url=' + encodeURIComponent(url));
+  if (!res.ok) throw new Error('fetch ' + res.status);
+  const data = await res.json();
+  return data;
+}
+
+function formatToolResults(results) {
+  if (!results.length) return 'sin resultados.';
+  return results.map((r, i) =>
+    (i+1) + '. ' + (r.title||'') + ': ' + (r.snippet||'') + (r.content ? '\n   [contenido: ' + r.content.slice(0, 1500) + ']' : '') + (r.date ? '\n   [fecha: ' + r.date + ']' : '') + '\n   URL: ' + r.link
+  ).join('\n\n');
+}
+
+async function callOmniRoute(messages, opts = {}) {
+  const body = { model: MODEL, messages: [getSystemPrompt(), ...messages] };
+  if (opts.tools) body.tools = TOOLS;
+  body.stream = !!opts.stream;
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let errText = 'HTTP ' + res.status;
+    try { const j = await res.json(); errText = j.error?.message || j.message || errText; }
+    catch (_) { errText = (await res.text()).slice(0, 200) || errText; }
+    throw new Error(errText);
+  }
+  if (opts.stream) return res.body.getReader();
+  const json = await res.json();
+  const msg = json.choices?.[0]?.message || {};
+  return {
+    content: msg.content || '',
+    toolCalls: (msg.tool_calls || []).map(tc => ({
+      id: tc.id,
+      name: tc.function?.name || '',
+      arguments: tc.function?.arguments || ''
+    }))
+  };
+}
+
+async function streamContent(messages, onDelta, opts = {}) {
+  const model = opts.noTools ? 'auto' : MODEL;
+  const body = { model, messages: [getSystemPrompt(), ...messages], stream: true };
+  if (!opts.noTools) body.tools = TOOLS;
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let errText = 'HTTP ' + res.status;
+    try { const j = await res.json(); errText = j.error?.message || j.message || errText; }
+    catch (_) { errText = (await res.text()).slice(0, 200) || errText; }
+    throw new Error(errText);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let content = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (data === '[DONE]') break;
+      try {
+        const json = JSON.parse(data);
+        const delta = json.choices?.[0]?.delta?.content || '';
+        if (delta) { content += delta; if (onDelta) onDelta(content); }
+      } catch (_) {}
+    }
+  }
+  return content;
+}
+
+async function send(text) {
+  if (busy || !text.trim()) return;
+  busy = true;
+  sendBtn.disabled = true;
+
+  addMsg('user', text);
+  history.push({ role: 'user', content: text });
+  saveToActiveConv();
+
+  let act;
+  let toolResults = [];
+
+  try {
+    let round = 1;
+    act = addActivity('analizando consulta...');
+    let result = await callOmniRoute(history, { tools: true });
+    let { content, toolCalls } = result;
+
+    while (toolCalls.length && round <= 3) {
+      removeEl(act);
+      const toolNames = toolCalls.map(tc => tc.name);
+      act = addActivity('ejecutando ' + toolNames.join(', ') + ' (ronda ' + round + ')...');
+
+      history.push({ role: 'assistant', content: content || null, tool_calls: toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } })) });
+
+      for (const tc of toolCalls) {
+        try {
+          const args = JSON.parse(tc.arguments || '{}');
+          if (tc.name === 'web_search') {
+            const query = args.query || '';
+            if (!query) { history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: query vacia' }); continue; }
+            const { results, provider } = await searchWeb(query);
+            toolResults.push(...results);
+            history.push({ role: 'tool', tool_call_id: tc.id, content: formatToolResults(results) + '\n[provider: ' + provider + ']' });
+          } else if (tc.name === 'web_fetch') {
+            const url = args.url || '';
+            if (!url) { history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: url vacia' }); continue; }
+            const data = await fetchWeb(url);
+            const contentText = data.content ? data.content.slice(0, 4000) : 'sin contenido';
+            toolResults.push({ title: data.title || url, link: data.url || url, snippet: contentText.slice(0, 500), content: contentText, source: data.provider || 'firecrawl' });
+            history.push({ role: 'tool', tool_call_id: tc.id, content: 'Contenido de ' + (data.title || url) + ':\n' + contentText });
+          }
+        } catch (err) {
+          history.push({ role: 'tool', tool_call_id: tc.id, content: 'error: ' + err.message });
+        }
+      }
+      removeEl(act);
+      act = addActivity('procesando ' + toolResults.length + ' resultados...', 'done');
+
+      round++;
+      result = await callOmniRoute(history, { tools: true });
+      content = result.content;
+      toolCalls = result.toolCalls;
+    }
+
+    removeEl(act);
+    act = addActivity('generando respuesta...', 'done');
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' });
+    const searchContext = toolResults.length
+      ? '\nFecha de hoy: ' + dateStr + '\nResultados de busqueda:\n' + toolResults.map((r, i) =>
+        (i+1) + '. ' + (r.title||'') + (r.date ? ' [' + r.date + ']' : '') + '\n   ' + (r.snippet||'') +
+        (r.content ? '\n   CONTENIDO: ' + r.content.slice(0, 2000) : '') +
+        '\n   URL: ' + (r.link||'')
+      ).join('\n\n') + '\n\nUsa markdown: **negritas**, tablas, listas. Links asi: [titulo](url). Maximo 2-3 fuentes. Verifica la fecha del articulo antes de responder.'
+      : '';
+    const cleanHistory = searchContext
+      ? [{ role: 'user', content: text + searchContext }]
+      : history;
+
+    const bubble = addMsg('bot', '');
+    bubble.classList.add('typing-anim');
+    addSourcesFooter(bubble, toolResults);
+    let finalContent = '';
+    await streamContent(cleanHistory, (t) => { finalContent = t; bubble.innerHTML = renderMarkdown(t); }, { noTools: true });
+    bubble.classList.remove('typing-anim');
+    if (!finalContent.trim()) {
+      bubble.textContent = '[sin respuesta]';
+      bubble.className += ' error';
+    }
+    history.push({ role: 'assistant', content: finalContent });
+    saveToActiveConv();
+
+    removeEl(act);
+  } catch (err) {
+    removeEl(act);
+    addMsg('error', 'error: ' + err.message);
+  }
+  busy = false;
+  sendBtn.disabled = false;
+  input.focus();
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = input.value;
+  input.value = '';
+  input.style.height = 'auto';
+  send(text);
+});
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.requestSubmit();
+  }
+});
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
