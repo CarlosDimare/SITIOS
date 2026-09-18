@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Chatbot Offline</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+        }
+        header {
+            background: #16213e;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #0f3460;
+            flex-shrink: 0;
+        }
+        header h1 { font-size: 1rem; color: #e94560; font-weight: 600; }
+        #status { font-size: 0.7rem; color: #888; margin-top: 4px; }
+        #header-text { text-align: center; flex: 1; }
+        #clear-btn {
+            background: none;
+            border: 1px solid #0f3460;
+            color: #aaa;
+            font-size: 0.7rem;
+            padding: 6px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        #clear-btn:active { transform: scale(0.95); }
+
+        #progress-wrap {
+            height: 3px;
+            background: #0f3460;
+            display: none;
+            flex-shrink: 0;
+        }
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #e94560;
+            transition: width 0.2s;
+        }
+
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .msg {
+            max-width: 88%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            line-height: 1.45;
+            font-size: 0.92rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .user {
+            align-self: flex-end;
+            background: #e94560;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .bot {
+            align-self: flex-start;
+            background: #0f3460;
+            color: #eee;
+            border-bottom-left-radius: 4px;
+        }
+        .bot.error { background: #5c1a2b; color: #f8c8d2; }
+        .bot.typing::after {
+            content: '▌';
+            animation: blink 0.8s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #input-area {
+            display: flex;
+            padding: 10px;
+            gap: 8px;
+            background: #16213e;
+            border-top: 1px solid #0f3460;
+            flex-shrink: 0;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        #input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 24px;
+            border: 1px solid #0f3460;
+            background: #1a1a2e;
+            color: #eee;
+            font-size: 1rem;
+            outline: none;
+        }
+        #input:focus { border-color: #e94560; }
+        #input:disabled { opacity: 0.5; }
+        #send {
+            padding: 12px 20px;
+            border-radius: 24px;
+            border: none;
+            background: #e94560;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            min-width: 84px;
+        }
+        #send.stop { background: #444; }
+        #send:disabled { opacity: 0.4; }
+        #send:active:not(:disabled) { transform: scale(0.95); }
+
+        #setup {
+            position: fixed;
+            inset: 0;
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            z-index: 100;
+        }
+        #setup h2 { color: #e94560; margin-bottom: 12px; font-size: 1.2rem; }
+        #setup p { color: #aaa; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5; }
+        #setup-btn {
+            padding: 16px 32px;
+            border-radius: 28px;
+            border: none;
+            background: #e94560;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        #setup-btn:active { transform: scale(0.95); }
+        #setup-btn:disabled { opacity: 0.5; }
+        #setup-status { margin-top: 16px; font-size: 0.8rem; color: #888; min-height: 1.2em; }
+        #setup-progress {
+            width: 100%;
+            max-width: 300px;
+            height: 4px;
+            background: #0f3460;
+            border-radius: 2px;
+            margin-top: 16px;
+            overflow: hidden;
+            display: none;
+        }
+        #setup-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #e94560;
+            transition: width 0.2s;
+        }
+    </style>
+</head>
+<body>
+
+<div id="setup">
+    <h2>🤖 Chatbot Local</h2>
+    <p>La primera vez se descargará el modelo (≈1.7 GB).<br>Después funcionará sin conexión.</p>
+    <button id="setup-btn">Descargar y comenzar</button>
+    <div id="setup-progress"><div id="setup-progress-fill"></div></div>
+    <div id="setup-status"></div>
+</div>
+
+<header>
+    <div style="width:60px"></div>
+    <div id="header-text">
+        <h1>🤖 Chatbot Offline</h1>
+        <div id="status">Listo</div>
+    </div>
+    <button id="clear-btn">Borrar</button>
+</header>
+<div id="progress-wrap"><div id="progress-fill"></div></div>
+
+<div id="chat"></div>
+
+<div id="input-area">
+    <input type="text" id="input" placeholder="Escribe un mensaje..." disabled maxlength="2000">
+    <button id="send" disabled>Enviar</button>
+</div>
+
+<script type="module">
+    import { Wllama } from 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.1.0/esm/index.js';
+
+    const CONFIG_PATHS = {
+        'single-thread/wllama.js': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.1.0/esm/single-thread/wllama.js',
+        'single-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.1.0/esm/single-thread/wllama.wasm',
+        'multi-thread/wllama.js': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.1.0/esm/multi-thread/wllama.js',
+        'multi-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.1.0/esm/multi-thread/wllama.wasm',
+        'multi-thread/wllama.worker.mjs': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.1.0/esm/multi-thread/wllama.worker.mjs',
+    };
+
+    const MODEL_URL = 'https://huggingface.co/mradermacher/Gemma2-2b-CoT-Spanish-GGUF/resolve/main/Gemma2-2b-CoT-Spanish.Q4_K_M.gguf';
+    const SYSTEM_PROMPT = 'Eres un asistente conversacional en español. Respondes de forma clara, útil y natural.';
+    const HISTORY_KEY = 'chatbot_offline_historial';
+    const MAX_TURNS = 6; // pares usuario/asistente conservados como contexto
+
+    // Elementos DOM
+    const setupEl = document.getElementById('setup');
+    const setupBtn = document.getElementById('setup-btn');
+    const setupStatus = document.getElementById('setup-status');
+    const setupProgress = document.getElementById('setup-progress');
+    const setupProgressFill = document.getElementById('setup-progress-fill');
+    const chatEl = document.getElementById('chat');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const clearBtn = document.getElementById('clear-btn');
+    const statusEl = document.getElementById('status');
+
+    let wllama = null;
+    let historial = [];
+    let generando = false;
+    let abortado = false;
+
+    // ---------- Utilidades de historial (persistencia local) ----------
+    function cargarHistorialGuardado() {
+        try {
+            const raw = localStorage.getItem(HISTORY_KEY);
+            if (!raw) return [];
+            const data = JSON.parse(raw);
+            return Array.isArray(data) ? data : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function guardarHistorial() {
+        try {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(historial));
+        } catch {
+            // almacenamiento lleno o no disponible: continuar sin persistir
+        }
+    }
+
+    function renderHistorial() {
+        chatEl.innerHTML = '';
+        if (historial.length === 0) {
+            agregarMensaje('¡Hola! Soy tu asistente local. Funciono sin conexión después de la primera carga. ¿En qué puedo ayudarte?', 'bot');
+            return;
+        }
+        for (const msg of historial) {
+            agregarMensaje(msg.content, msg.role === 'user' ? 'user' : 'bot');
+        }
+    }
+
+    // ---------- UI ----------
+    function agregarMensaje(texto, tipo) {
+        const div = document.createElement('div');
+        div.className = `msg ${tipo}`;
+        div.textContent = texto;
+        chatEl.appendChild(div);
+        chatEl.scrollTop = chatEl.scrollHeight;
+        return div;
+    }
+
+    function formatearError(error) {
+        const msg = error && error.message ? error.message : String(error);
+        if (/fetch|network|failed to fetch/i.test(msg)) {
+            return 'No se pudo conectar para descargar el modelo. Revisa tu conexión e inténtalo de nuevo.';
+        }
+        if (/memory|out of memory|allocat/i.test(msg)) {
+            return 'Memoria insuficiente en el dispositivo para cargar el modelo.';
+        }
+        return 'Error: ' + msg;
+    }
+
+    // ---------- Carga del modelo ----------
+    async function cargarModelo({ silencioso }) {
+        if (!silencioso) {
+            setupBtn.disabled = true;
+            setupStatus.textContent = 'Inicializando motor...';
+            setupProgress.style.display = 'block';
+        }
+
+        const instancia = new Wllama(CONFIG_PATHS);
+
+        const progressCallback = ({ loaded, total }) => {
+            if (!total) return;
+            const pct = Math.round((loaded / total) * 100);
+            if (!silencioso) {
+                setupProgressFill.style.width = `${pct}%`;
+                setupStatus.textContent = `Descargando modelo... ${pct}%`;
+            }
+            statusEl.textContent = `Cargando... ${pct}%`;
+        };
+
+        await instancia.loadModelFromUrl(MODEL_URL, {
+            progressCallback,
+            useCache: true,
+            allowOffline: true,
+        });
+
+        return instancia;
+    }
+
+    async function inicializarModelo() {
+        try {
+            wllama = await cargarModelo({ silencioso: false });
+            setupStatus.textContent = 'Modelo listo. Ya puedes usar el chat.';
+            statusEl.textContent = '✅ Listo (offline)';
+            setupEl.style.display = 'none';
+            inputEl.disabled = false;
+            sendBtn.disabled = false;
+            inputEl.focus();
+        } catch (error) {
+            console.error(error);
+            setupStatus.textContent = '❌ ' + formatearError(error);
+            setupBtn.disabled = false;
+            setupProgress.style.display = 'none';
+        }
+    }
+
+    // ---------- Plantilla de prompt (formato Gemma) ----------
+    function construirPrompt(mensajeActual) {
+        // Gemma usa turnos <start_of_turn>user/model ... <end_of_turn>.
+        // El system prompt se antepone al primer turno de usuario.
+        let prompt = '';
+        let systemInyectado = false;
+
+        for (const msg of historial) {
+            if (msg.role === 'user') {
+                const contenido = systemInyectado ? msg.content : `${SYSTEM_PROMPT}\n\n${msg.content}`;
+                systemInyectado = true;
+                prompt += `<start_of_turn>user\n${contenido}<end_of_turn>\n`;
+            } else {
+                prompt += `<start_of_turn>model\n${msg.content}<end_of_turn>\n`;
+            }
+        }
+
+        const contenidoActual = systemInyectado ? mensajeActual : `${SYSTEM_PROMPT}\n\n${mensajeActual}`;
+        prompt += `<start_of_turn>user\n${contenidoActual}<end_of_turn>\n<start_of_turn>model\n`;
+        return prompt;
+    }
+
+    // ---------- Envío de mensajes ----------
+    function actualizarBotonEnvio() {
+        sendBtn.textContent = generando ? 'Detener' : 'Enviar';
+        sendBtn.classList.toggle('stop', generando);
+        sendBtn.disabled = false;
+        inputEl.disabled = generando;
+    }
+
+    async function enviarMensaje() {
+        if (generando) {
+            abortado = true;
+            return;
+        }
+
+        const texto = inputEl.value.trim();
+        if (!texto || !wllama) return;
+
+        agregarMensaje(texto, 'user');
+        inputEl.value = '';
+        generando = true;
+        abortado = false;
+        actualizarBotonEnvio();
+
+        const burbujaBot = agregarMensaje('', 'bot typing');
+        const prompt = construirPrompt(texto);
+        let respuestaAcumulada = '';
+
+        try {
+            await wllama.createCompletion(prompt, {
+                nPredict: 256,
+                sampling: { temp: 0.7, top_k: 40, top_p: 0.9 },
+                onNewToken: (token, piece, currentText) => {
+                    respuestaAcumulada = currentText;
+                    burbujaBot.textContent = respuestaAcumulada;
+                    chatEl.scrollTop = chatEl.scrollHeight;
+                    if (abortado) {
+                        wllama.stopCompletion?.();
+                    }
+                },
+            });
+
+            burbujaBot.classList.remove('typing');
+            const respuestaFinal = respuestaAcumulada.trim() || '(sin respuesta)';
+            burbujaBot.textContent = respuestaFinal;
+
+            historial.push({ role: 'user', content: texto });
+            historial.push({ role: 'assistant', content: respuestaFinal });
+            if (historial.length > MAX_TURNS * 2) historial = historial.slice(-MAX_TURNS * 2);
+            guardarHistorial();
+
+        } catch (error) {
+            console.error(error);
+            burbujaBot.classList.remove('typing');
+            burbujaBot.classList.add('error');
+            burbujaBot.textContent = formatearError(error);
+        }
+
+        generando = false;
+        abortado = false;
+        actualizarBotonEnvio();
+        inputEl.focus();
+    }
+
+    function borrarConversacion() {
+        historial = [];
+        guardarHistorial();
+        renderHistorial();
+    }
+
+    // ---------- Eventos ----------
+    setupBtn.addEventListener('click', inicializarModelo);
+    sendBtn.addEventListener('click', enviarMensaje);
+    clearBtn.addEventListener('click', borrarConversacion);
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !generando) enviarMensaje();
+    });
+
+    // ---------- Arranque ----------
+    window.addEventListener('load', async () => {
+        historial = cargarHistorialGuardado();
+        renderHistorial();
+
+        // Intentar carga silenciosa SOLO si el modelo ya podría estar en caché.
+        // Si no lo está, no se descarga en segundo plano sin avisar: se muestra
+        // la pantalla de configuración con la barra de progreso visible.
+        try {
+            const cacheDisponible = 'caches' in window || 'indexedDB' in window;
+            if (!cacheDisponible) throw new Error('sin soporte de caché');
+
+            // wllama expone su propio chequeo de caché en algunas versiones;
+            // como fallback, probamos una carga con useCache y detectamos
+            // rápidamente si requeriría red mediante progressCallback.
+            let requiereDescarga = false;
+            const instancia = new Wllama(CONFIG_PATHS);
+            await instancia.loadModelFromUrl(MODEL_URL, {
+                useCache: true,
+                allowOffline: true,
+                progressCallback: () => { requiereDescarga = true; },
+            });
+
+            if (requiereDescarga) {
+                // Se disparó una descarga real: abortamos esta ruta silenciosa
+                // y dejamos que el usuario decida desde la pantalla de setup.
+                throw new Error('modelo no cacheado');
+            }
+
+            wllama = instancia;
+            setupEl.style.display = 'none';
+            statusEl.textContent = '✅ Listo (offline)';
+            inputEl.disabled = false;
+            sendBtn.disabled = false;
+        } catch (e) {
+            setupStatus.textContent = 'Primera carga: necesitas descargar el modelo.';
+        }
+    });
+</script>
+
+</body>
+</html>
